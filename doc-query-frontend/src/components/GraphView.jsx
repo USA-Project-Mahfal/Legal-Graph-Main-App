@@ -4,10 +4,10 @@ import * as THREE from 'three';
 
 // Color mapping for node groups
 const GROUP_COLORS = {
-  1: '#4285F4', // Web - Blue
-  2: '#EA4335', // Mobile - Red
-  3: '#FBBC05', // Cybersecurity - Yellow
-  4: '#34A853', // IoT - Green
+  1: '#3B82F6', // Web - Blue
+  2: '#EF4444', // Mobile - Red
+  3: '#F59E0B', // Cybersecurity - Yellow
+  4: '#10B981', // IoT - Green
 };
 
 // Field names for groups
@@ -36,7 +36,7 @@ const GraphView = () => {
 
         // Initialize the 3D force graph
         graph = ForceGraph3D({ controlType: 'orbit' })(containerRef.current)
-          .backgroundColor('#000000')
+          .backgroundColor('#111827')
           .nodeColor((node) => GROUP_COLORS[node.group] || '#ffffff')
           .nodeLabel((node) => node.name)
           .nodeRelSize(6)
@@ -162,58 +162,66 @@ const GraphView = () => {
   return (
     <div className="h-full w-full relative">
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-80 z-50">
-          <div className="text-white p-5 rounded-lg">
-            Loading project graph data...
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900/90 backdrop-blur-sm z-50">
+          <div className="text-white p-5 rounded-lg bg-gray-800/50 border border-gray-700">
+            <div className="animate-pulse">Loading project graph data...</div>
           </div>
         </div>
       )}
 
-      <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white p-4 rounded-lg z-10 max-w-xs">
-        <h3 className="text-lg font-semibold mb-2">
+      <div className="absolute top-4 left-4 bg-gray-900/90 backdrop-blur-sm text-white p-4 rounded-lg z-10 max-w-xs border border-gray-700 shadow-xl">
+        <h3 className="text-lg font-semibold mb-3 text-gray-100">
           Project Graph Visualization
         </h3>
-        <div className="space-x-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           <button
             onClick={handleZoomToFit}
-            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
           >
             Zoom to Fit
           </button>
           <button
             onClick={handleResetView}
-            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
           >
             Reset View
           </button>
           <button
             onClick={handleToggleRotation}
-            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
           >
             {rotating ? 'Stop Rotation' : 'Start Rotation'}
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {Object.entries(GROUP_COLORS).map(([group, color]) => (
             <div key={group} className="flex items-center">
               <div
-                className="w-4 h-4 mr-2 rounded"
+                className="w-3 h-3 mr-2 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <span>{GROUP_FIELDS[group]}</span>
+              <span className="text-sm text-gray-300">
+                {GROUP_FIELDS[group]}
+              </span>
             </div>
           ))}
         </div>
-        <p className="text-sm mt-2 text-gray-300">
+        <p className="text-sm mt-3 text-gray-400">
           Click on nodes to view details. Links represent project similarity.
         </p>
       </div>
 
       {selectedNode && (
-        <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white p-4 rounded-lg z-10 max-w-xs">
-          <h3 className="text-lg font-semibold">{selectedNode.name}</h3>
-          <p className="text-gray-300">{GROUP_FIELDS[selectedNode.group]}</p>
-          <p className="mt-2">{selectedNode.description}</p>
+        <div className="absolute bottom-4 right-4 bg-gray-900/90 backdrop-blur-sm text-white p-4 rounded-lg z-10 max-w-xs border border-gray-700 shadow-xl">
+          <h3 className="text-lg font-semibold text-gray-100">
+            {selectedNode.name}
+          </h3>
+          <p className="text-sm text-gray-400">
+            {GROUP_FIELDS[selectedNode.group]}
+          </p>
+          <p className="mt-2 text-sm text-gray-300">
+            {selectedNode.description}
+          </p>
         </div>
       )}
 
