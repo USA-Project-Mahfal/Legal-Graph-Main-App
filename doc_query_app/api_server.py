@@ -11,11 +11,7 @@ from data_manager import get_graph_data
 from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION
 
 # Create FastAPI app
-app = FastAPI(
-    title=APP_TITLE,
-    description=APP_DESCRIPTION,
-    version=APP_VERSION
-)
+app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION, version=APP_VERSION)
 
 # Enable CORS for local development
 app.add_middleware(
@@ -27,7 +23,6 @@ app.add_middleware(
 )
 
 # Mount the static directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Ensure upload directory exists
@@ -56,6 +51,7 @@ async def ask_question(question: str = Form(...)):
 async def get_graph():
     """Return graph data for 3D visualization"""
     return get_graph_data()
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host=HOST, port=PORT)
