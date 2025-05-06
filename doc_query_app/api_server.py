@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
+import os
+from fastapi import UploadFile, File, Form
 
 # Import project modules
 from data_manager import get_graph_data
@@ -28,12 +30,28 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@app.get("/")
-async def root():
-    """Serve the main visualization page"""
-    return FileResponse('static/index.html')
+# Ensure upload directory exists
+os.makedirs("uploaded_docs", exist_ok=True)
 
 
+# Endpoint 1: File Upload
+@app.post("/upload")
+async def upload_doc(file: UploadFile = File(...)):
+    contents = await file.read()
+    filepath = os.path.join("uploaded_docs", file.filename)
+    with open(filepath, "wb") as f:
+        f.write(contents)
+    return {"message": f"File '{file.filename}' uploaded successfully!"}
+
+
+# Endpoint 2: Question/Prompt Submission
+@app.post("/ask")
+async def ask_question(question: str = Form(...)):
+    print("Received question:", question)
+    return {"response": f"You asked: {question}"}
+
+
+# Endpoint 3: Get Graph Data
 @app.get("/graph")
 async def get_graph():
     """Return graph data for 3D visualization"""

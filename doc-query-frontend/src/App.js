@@ -1,19 +1,20 @@
-import { useState } from "react";
-import Header from "./components/Header";
-import ChatView from "./components/ChatView";
-import UploadView from "./components/UploadView";
-import HistoryView from "./components/HistoryView";
-import Footer from "./components/Footer";
-import Sidebar from "./components/Sidebar";
+import { useState } from 'react';
+import Header from './components/Header';
+import ChatView from './components/ChatView';
+import UploadView from './components/UploadView';
+import HistoryView from './components/HistoryView';
+import GraphView from './components/GraphView';
+import Footer from './components/Footer';
+import Sidebar from './components/Sidebar';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState("chat"); // 'chat', 'upload', 'history'
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat', 'upload', 'history'
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [messages, setMessages] = useState([
     {
       id: 1,
-      role: "system",
+      role: 'system',
       content:
         "Welcome to Legal Intelligence. You can ask questions about your legal documents, and I'll provide answers based on the content you've uploaded.",
     },
@@ -22,25 +23,25 @@ export default function App() {
   const [uploadProgress, setUploadProgress] = useState({});
   const [chatHistory, setChatHistory] = useState([
     {
-      id: "chat-1",
-      title: "NDA Review Discussion",
-      date: "2 May 2025",
+      id: 'chat-1',
+      title: 'NDA Review Discussion',
+      date: '2 May 2025',
       messages: 4,
     },
     {
-      id: "chat-2",
-      title: "Contract Interpretation",
-      date: "30 Apr 2025",
+      id: 'chat-2',
+      title: 'Contract Interpretation',
+      date: '30 Apr 2025',
       messages: 7,
     },
     {
-      id: "chat-3",
-      title: "Legal Compliance Inquiry",
-      date: "28 Apr 2025",
+      id: 'chat-3',
+      title: 'Legal Compliance Inquiry',
+      date: '28 Apr 2025',
       messages: 3,
     },
   ]);
-  const [currentChatId, setCurrentChatId] = useState("current");
+  const [currentChatId, setCurrentChatId] = useState('current');
 
   // Handle file upload
   const handleFileUpload = (files) => {
@@ -76,43 +77,43 @@ export default function App() {
   // Select a chat from history
   const selectChat = (chatId) => {
     setCurrentChatId(chatId);
-    setActiveTab("chat");
+    setActiveTab('chat');
 
     // For this demo, simulate different messages based on the chat ID
-    if (chatId === "chat-1") {
+    if (chatId === 'chat-1') {
       setMessages([
         {
           id: 1,
-          role: "system",
-          content: "Welcome to the NDA Review Discussion.",
+          role: 'system',
+          content: 'Welcome to the NDA Review Discussion.',
         },
         {
           id: 2,
-          role: "user",
-          content: "Can we share data with third parties under NDA X?",
+          role: 'user',
+          content: 'Can we share data with third parties under NDA X?',
         },
         {
           id: 3,
-          role: "system",
+          role: 'system',
           content:
-            "Based on Section 4.2 of NDA X, data sharing with third parties is permitted only with prior written consent and when the third party signs a comparable confidentiality agreement.",
+            'Based on Section 4.2 of NDA X, data sharing with third parties is permitted only with prior written consent and when the third party signs a comparable confidentiality agreement.',
           sources: [
-            { title: "NDA X", section: "Section 4.2", relevance: 0.92 },
+            { title: 'NDA X', section: 'Section 4.2', relevance: 0.92 },
           ],
         },
       ]);
-    } else if (chatId === "chat-2") {
+    } else if (chatId === 'chat-2') {
       setMessages([
         {
           id: 1,
-          role: "system",
-          content: "Welcome to Contract Interpretation.",
+          role: 'system',
+          content: 'Welcome to Contract Interpretation.',
         },
         {
           id: 2,
-          role: "user",
+          role: 'user',
           content:
-            "What are our obligations under section 7 of the service contract?",
+            'What are our obligations under section 7 of the service contract?',
         },
       ]);
     } else {
@@ -120,7 +121,7 @@ export default function App() {
       setMessages([
         {
           id: 1,
-          role: "system",
+          role: 'system',
           content:
             "Welcome to Legal Intelligence. You can ask questions about your legal documents, and I'll provide answers based on the content you've uploaded.",
         },
@@ -130,16 +131,16 @@ export default function App() {
 
   // Create new chat
   const createNewChat = () => {
-    setCurrentChatId("current");
+    setCurrentChatId('current');
     setMessages([
       {
         id: 1,
-        role: "system",
+        role: 'system',
         content:
           "Welcome to Legal Intelligence. You can ask questions about your legal documents, and I'll provide answers based on the content you've uploaded.",
       },
     ]);
-    setActiveTab("chat");
+    setActiveTab('chat');
   };
 
   // Toggle theme
@@ -150,7 +151,7 @@ export default function App() {
   return (
     <div
       className={`flex h-screen ${
-        isDarkMode ? "bg-gray-800 text-white" : "bg-gray-50 text-gray-900"
+        isDarkMode ? 'bg-gray-800 text-white' : 'bg-gray-50 text-gray-900'
       }`}
     >
       {/* Sidebar */}
@@ -177,10 +178,10 @@ export default function App() {
 
         <main
           className={`flex-grow flex overflow-hidden ${
-            isDarkMode ? "bg-gray-900" : "bg-white"
+            isDarkMode ? 'bg-gray-900' : 'bg-white'
           }`}
         >
-          {activeTab === "chat" && (
+          {activeTab === 'chat' && (
             <ChatView
               messages={messages}
               setMessages={setMessages}
@@ -189,7 +190,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === "upload" && (
+          {activeTab === 'upload' && (
             <UploadView
               uploadedFiles={uploadedFiles}
               uploadProgress={uploadProgress}
@@ -199,7 +200,9 @@ export default function App() {
             />
           )}
 
-          {activeTab === "history" && (
+          {activeTab === 'graph' && <GraphView />}
+
+          {activeTab === 'history' && (
             <HistoryView
               chatHistory={chatHistory}
               selectChat={selectChat}

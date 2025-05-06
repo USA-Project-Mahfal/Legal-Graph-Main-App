@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   MessageSquare,
   Upload,
@@ -12,7 +11,8 @@ import {
   Shield,
   Settings,
   LogOut,
-} from "lucide-react";
+  Network,
+} from 'lucide-react';
 
 export default function Sidebar({
   activeTab,
@@ -26,7 +26,7 @@ export default function Sidebar({
   return (
     <div
       className={`bg-gradient-to-b from-gray-900 to-gray-800 text-white transition-all duration-300 flex flex-col shadow-lg ${
-        isSidebarCollapsed ? "w-16" : "w-64"
+        isSidebarCollapsed ? 'w-16' : 'w-64'
       }`}
     >
       {/* Top section with logo and collapse button */}
@@ -79,16 +79,16 @@ export default function Sidebar({
         <ul className="space-y-1 px-2">
           <li>
             <button
-              onClick={() => setActiveTab("chat")}
+              onClick={() => setActiveTab('chat')}
               className={`w-full flex items-center p-2 rounded-lg transition-colors ${
-                activeTab === "chat"
-                  ? "bg-blue-600/10 text-blue-400"
-                  : "text-gray-300 hover:bg-gray-800/50"
+                activeTab === 'chat'
+                  ? 'bg-blue-600/10 text-blue-400'
+                  : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
               <MessageSquare
                 className={`h-4 w-4 ${
-                  activeTab === "chat" ? "text-blue-400" : ""
+                  activeTab === 'chat' ? 'text-blue-400' : ''
                 }`}
               />
               {!isSidebarCollapsed && (
@@ -98,16 +98,16 @@ export default function Sidebar({
           </li>
           <li>
             <button
-              onClick={() => setActiveTab("upload")}
+              onClick={() => setActiveTab('upload')}
               className={`w-full flex items-center p-2 rounded-lg transition-colors ${
-                activeTab === "upload"
-                  ? "bg-blue-600/10 text-blue-400"
-                  : "text-gray-300 hover:bg-gray-800/50"
+                activeTab === 'upload'
+                  ? 'bg-blue-600/10 text-blue-400'
+                  : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
               <Upload
                 className={`h-4 w-4 ${
-                  activeTab === "upload" ? "text-blue-400" : ""
+                  activeTab === 'upload' ? 'text-blue-400' : ''
                 }`}
               />
               {!isSidebarCollapsed && (
@@ -117,16 +117,35 @@ export default function Sidebar({
           </li>
           <li>
             <button
-              onClick={() => setActiveTab("history")}
+              onClick={() => setActiveTab('graph')}
               className={`w-full flex items-center p-2 rounded-lg transition-colors ${
-                activeTab === "history"
-                  ? "bg-blue-600/10 text-blue-400"
-                  : "text-gray-300 hover:bg-gray-800/50"
+                activeTab === 'graph'
+                  ? 'bg-blue-600/10 text-blue-400'
+                  : 'text-gray-300 hover:bg-gray-800/50'
+              }`}
+            >
+              <Network
+                className={`h-4 w-4 ${
+                  activeTab === 'graph' ? 'text-blue-400' : ''
+                }`}
+              />
+              {!isSidebarCollapsed && (
+                <span className="ml-3 text-sm">Graph View</span>
+              )}
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`w-full flex items-center p-2 rounded-lg transition-colors ${
+                activeTab === 'history'
+                  ? 'bg-blue-600/10 text-blue-400'
+                  : 'text-gray-300 hover:bg-gray-800/50'
               }`}
             >
               <Clock
                 className={`h-4 w-4 ${
-                  activeTab === "history" ? "text-blue-400" : ""
+                  activeTab === 'history' ? 'text-blue-400' : ''
                 }`}
               />
               {!isSidebarCollapsed && (

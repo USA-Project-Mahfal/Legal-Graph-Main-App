@@ -81,21 +81,30 @@ def create_graph_data(embeddings):
                     "value": float(similarity_matrix[i][j])
                 })
 
-    # Create nodes with embeddings and metadata
+    # Create nodes with only essential data
     nodes = []
     for i, project in enumerate(project_data):
+        # Calculate node size based on number of connections
+        connection_count = len([link for link in links if str(i) in [
+                               link["source"], link["target"]]])
+
         nodes.append({
             "id": str(i),
             "name": project["title"],
             "group": field_to_group[project["field"]],
             "description": project["description"],
-            "val": 1 + len([link for link in links if str(i) in [link["source"], link["target"]]])
+            "connections": connection_count  # Let frontend calculate size based on this
         })
 
-    # Create graph data
+    # Create minimal graph data structure
     graph_data = {
         "nodes": nodes,
-        "links": links
+        "links": links,
+        "metadata": {
+            "field_groups": field_to_group,
+            "total_nodes": len(nodes),
+            "total_links": len(links)
+        }
     }
 
     # Always save new graph data when creating

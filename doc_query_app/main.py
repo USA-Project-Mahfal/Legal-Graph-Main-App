@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from data_manager import get_graph_data
 
 app = FastAPI()
 
@@ -32,3 +33,9 @@ async def upload_doc(file: UploadFile = File(...)):
 async def ask_question(question: str = Form(...)):
     print("Received question:", question)
     return {"response": f"You asked: {question}"}
+
+
+# Endpoint 3: Get Graph Data
+@app.get("/graph")
+async def get_graph():
+    return get_graph_data()
