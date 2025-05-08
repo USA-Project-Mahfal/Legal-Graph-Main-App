@@ -9,6 +9,34 @@ export default function UploadView({
   removeFile,
 }) {
   const [dragActive, setDragActive] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  // Handle file upload to backend
+  const uploadToBackend = async (files) => {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file);
+    }
+
+    try {
+      const response = await fetch('http://localhost:8000/upload-multiple', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Upload error:', error);
+      setUploadError(error.message);
+      throw error;
+    }
+  };
 
   // Handle drag and drop
   const handleDrag = (e) => {
@@ -21,13 +49,31 @@ export default function UploadView({
     }
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    setUploadError(null);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileUpload(e.dataTransfer.files);
+      try {
+        await uploadToBackend(e.dataTransfer.files);
+        handleFileUpload(e.dataTransfer.files);
+      } catch (error) {
+        console.error('Error uploading files:', error);
+      }
+    }
+  };
+
+  const handleFileSelect = async (e) => {
+    setUploadError(null);
+    if (e.target.files && e.target.files.length > 0) {
+      try {
+        await uploadToBackend(e.target.files);
+        handleFileUpload(e.target.files);
+      } catch (error) {
+        console.error('Error uploading files:', error);
+      }
     }
   };
 
@@ -43,6 +89,12 @@ export default function UploadView({
             formats.
           </p>
         </div>
+
+        {uploadError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {uploadError}
+          </div>
+        )}
 
         {/* File upload area */}
         <div
@@ -68,7 +120,7 @@ export default function UploadView({
             multiple
             accept=".pdf,.docx,.doc"
             className="hidden"
-            onChange={(e) => handleFileUpload(e.target.files)}
+            onChange={handleFileSelect}
           />
           <div className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             Select Files
