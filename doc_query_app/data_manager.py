@@ -5,10 +5,11 @@ import docx
 import PyPDF2
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from config import USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD
+from config import USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD, MAX_CHAR_LIMIT
 # Paths for data storage
 GRAPH_DATA_PATH = 'data/graph_data.json'
 EMBEDDINGS_PATH = 'data/embeddings.npy'
+FILE_DATA_PATH = 'data/file_data.json'
 DATA_DIR = 'data'
 RAW_FILES_DIR = 'raw_files'
 
@@ -57,6 +58,22 @@ def load_graph_data():
     return None
 
 
+def save_file_data(file_data):
+    """Save file data to file"""
+    print("Saving file data...")
+    with open(FILE_DATA_PATH, 'w') as f:
+        json.dump(file_data, f)
+
+
+def load_file_data():
+    """Load file data from file if exists, otherwise return None"""
+    print("Loading file data...")
+    if os.path.exists(FILE_DATA_PATH):
+        with open(FILE_DATA_PATH, 'r') as f:
+            return json.load(f)
+    return None
+
+
 def generate_embeddings():
     """Generate embeddings for project data"""
     print("Generating embeddings...")
@@ -78,12 +95,12 @@ def generate_embeddings():
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    descriptions.append(content[:1000])
+                    descriptions.append(content[:MAX_CHAR_LIMIT])
                     file_data.append({
                         "id": len(file_data),
                         "title": filename,
                         "field": field_type,
-                        "description": content[:1000]
+                        "description": content[:MAX_CHAR_LIMIT]
                     })
             except Exception as e:
                 print(f"Error reading file {filename}: {str(e)}")
@@ -105,6 +122,8 @@ def generate_embeddings():
 
     # Always save new embeddings when generating
     save_embeddings(embeddings)
+    # Always save new file data when generating
+    save_file_data(file_data)
 
     return embeddings, file_data
 
@@ -172,8 +191,9 @@ def get_graph_data():
 
         # If no graph data, try to use existing embeddings
         embeddings = load_embeddings()
+        file_data = load_file_data()
         if embeddings is not None:
-            return create_graph_data(embeddings)
+            return create_graph_data(embeddings, file_data)
     else:
         # If not using cached data, remove old files if they exist
         if os.path.exists(GRAPH_DATA_PATH):
@@ -182,31 +202,28 @@ def get_graph_data():
             os.remove(EMBEDDINGS_PATH)
 
     # Generate new embeddings and graph data
-    embeddings, project_data = generate_embeddings()
-    return create_graph_data(embeddings, project_data)
+    embeddings, file_data = generate_embeddings()
+    return create_graph_data(embeddings, file_data)
 
 
 def get_file_description(file_path):
-    """Extract first 200 characters from file content as description"""
+    """Extract content from file and return truncated description"""
+    file_handlers = {
+        '.pdf': lambda f: PyPDF2.PdfReader(f).pages[0].extract_text(),
+        '.docx': lambda f: docx.Document(f).paragraphs[0].text if docx.Document(f).paragraphs else "",
+        'default': lambda f: f.read()
+    }
+
     try:
-        # Handle PDF files
-        if file_path.lower().endswith('.pdf'):
-            with open(file_path, 'rb') as f:
-                pdf = PyPDF2.PdfReader(f)
-                content = pdf.pages[0].extract_text()
-                return content[:200] + "..." if len(content) > 200 else content
+        file_ext = os.path.splitext(file_path)[1].lower()
+        handler = file_handlers.get(file_ext, file_handlers['default'])
 
-        # Handle DOCX files
-        elif file_path.lower().endswith('.docx'):
-            doc = docx.Document(file_path)
-            content = doc.paragraphs[0].text if doc.paragraphs else ""
-            return content[:200] + "..." if len(content) > 200 else content
+        open_mode = 'rb' if file_ext == '.pdf' else 'r'
+        encoding = None if file_ext == '.pdf' else 'utf-8'
 
-        # Handle text files
-        else:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                return content[:200] + "..." if len(content) > 200 else content
+        with open(file_path, open_mode, encoding=encoding) as f:
+            content = handler(f)
+            return content[:MAX_CHAR_LIMIT] + "..." if len(content) > MAX_CHAR_LIMIT else content
 
     except Exception as e:
         return f"Error reading file {os.path.basename(file_path)}: {str(e)}"

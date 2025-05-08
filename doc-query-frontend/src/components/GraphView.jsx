@@ -4,20 +4,12 @@ import * as THREE from 'three';
 
 // Color mapping for node groups
 const GROUP_COLORS = {
-  // 1: '#3B82F6', // Web - Blue
-  // 2: '#EF4444', // Mobile - Red
-  // 3: '#F59E0B', // Cybersecurity - Yellow
-  // 4: '#10B981', // IoT - Green
   5: '#FFD700', // File - Yellow
   6: '#EF4444', // New - Red
 };
 
 // Field names for groups
 const GROUP_FIELDS = {
-  // 1: 'Web Application',
-  // 2: 'Mobile Application',
-  // 3: 'Cybersecurity',
-  // 4: 'IoT',
   5: 'File',
   6: 'New',
 };
@@ -29,6 +21,20 @@ const GraphView = () => {
   const [rotating, setRotating] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [error, setError] = useState(null);
+
+  // Fetch graph data
+  const fetchGraphData = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/graph');
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error('Error fetching graph data:', err);
+      throw err;
+    }
+  };
 
   useEffect(() => {
     let graph = null;
@@ -69,12 +75,7 @@ const GraphView = () => {
         graphRef.current = graph;
 
         // Load graph data
-        const response = await fetch('http://localhost:8000/graph');
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-
+        const data = await fetchGraphData();
         graph.graphData(data);
         setLoading(false);
 
