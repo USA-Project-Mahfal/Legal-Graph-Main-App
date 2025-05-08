@@ -107,7 +107,6 @@ const GraphView = () => {
     const spin = () => {
       if (!rotating) return;
 
-      const curRotation = graphRef.current.rotation();
       graphRef.current.scene().rotation.y += 0.01;
 
       animationFrameId = requestAnimationFrame(spin);
