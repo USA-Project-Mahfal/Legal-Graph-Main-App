@@ -19,10 +19,6 @@ os.makedirs(RAW_FILES_DIR, exist_ok=True)
 
 # Field to group mapping
 field_to_group = {
-    "web": 1,
-    "mobile": 2,
-    "cybersecurity": 3,
-    "iot": 4,
     "file": 5,  # New group for uploaded files
     "new": 6  # New group for uploaded files
 }
