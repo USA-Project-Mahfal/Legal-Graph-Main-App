@@ -118,7 +118,7 @@ export default function UploadView({
             id="file-upload"
             type="file"
             multiple
-            accept=".pdf,.docx,.doc"
+            accept=".pdf,.docx,.doc,.txt"
             className="hidden"
             onChange={handleFileSelect}
           />

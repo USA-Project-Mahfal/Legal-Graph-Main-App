@@ -25,36 +25,8 @@ app.add_middleware(
 )
 
 # Ensure upload directory exists
-UPLOAD_DIR = "raw_files"
+UPLOAD_DIR = "raw_files/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
-@app.post("/upload")
-async def upload_doc(file: UploadFile = File(...)):
-    try:
-        # Create a safe filename
-        safe_filename = file.filename.replace(" ", "_")
-        filepath = os.path.join(UPLOAD_DIR, safe_filename)
-
-        # Save the file
-        contents = await file.read()
-        with open(filepath, "wb") as f:
-            f.write(contents)
-
-        # Process the new file and update graph data
-        graph_data = process_new_file(safe_filename)
-
-        return {
-            "message": f"File '{safe_filename}' uploaded and processed successfully!",
-            "filename": safe_filename,
-            "status": "success",
-            "graph_data": graph_data
-        }
-    except Exception as e:
-        return {
-            "message": f"Error uploading file: {str(e)}",
-            "status": "error"
-        }
 
 
 @app.post("/upload-multiple")

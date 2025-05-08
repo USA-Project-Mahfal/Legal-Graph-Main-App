@@ -1,6 +1,8 @@
 import json
 import os
 import numpy as np
+import docx
+import PyPDF2
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from config import USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD
@@ -20,7 +22,8 @@ field_to_group = {
     "mobile": 2,
     "cybersecurity": 3,
     "iot": 4,
-    "file": 5  # New group for uploaded files
+    "file": 5,  # New group for uploaded files
+    "new": 6  # New group for uploaded files
 }
 
 
@@ -62,25 +65,35 @@ def generate_embeddings():
     descriptions = []
     file_data = []
 
-    # Add contract file descriptions
+    def process_directory(directory, field_type, limit=30):
+        """Process files in a directory and add them to descriptions and file_data"""
+        if not os.path.exists(directory):
+            return
+
+        for filename in os.listdir(directory)[:limit]:
+            if not filename.endswith('.txt'):
+                continue
+
+            file_path = os.path.join(directory, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    descriptions.append(content[:1000])
+                    file_data.append({
+                        "id": len(file_data),
+                        "title": filename,
+                        "field": field_type,
+                        "description": content[:1000]
+                    })
+            except Exception as e:
+                print(f"Error reading file {filename}: {str(e)}")
+
+    # Process both directories
     contract_dir = os.path.join(RAW_FILES_DIR, 'full_contract_txt')
-    if os.path.exists(contract_dir):
-        for filename in os.listdir(contract_dir)[:30]:
-            if filename.endswith('.txt'):
-                file_path = os.path.join(contract_dir, filename)
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        # Take first 1000 characters
-                        descriptions.append(content[:1000])
-                        file_data.append({
-                            "id": len(file_data),
-                            "title": filename,
-                            "field": "file",
-                            "description": content[:1000]
-                        })
-                except Exception as e:
-                    print(f"Error reading file {filename}: {str(e)}")
+    uploads_dir = os.path.join(RAW_FILES_DIR, 'uploads')
+
+    process_directory(contract_dir, "file", 30)
+    process_directory(uploads_dir, "new")
 
     print("Number of files added:", len(file_data))
 
@@ -176,11 +189,27 @@ def get_graph_data():
 def get_file_description(file_path):
     """Extract first 200 characters from file content as description"""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Handle PDF files
+        if file_path.lower().endswith('.pdf'):
+            with open(file_path, 'rb') as f:
+                pdf = PyPDF2.PdfReader(f)
+                content = pdf.pages[0].extract_text()
+                return content[:200] + "..." if len(content) > 200 else content
+
+        # Handle DOCX files
+        elif file_path.lower().endswith('.docx'):
+            doc = docx.Document(file_path)
+            content = doc.paragraphs[0].text if doc.paragraphs else ""
             return content[:200] + "..." if len(content) > 200 else content
-    except UnicodeDecodeError:
-        return f"Binary file: {os.path.basename(file_path)}"
+
+        # Handle text files
+        else:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                return content[:200] + "..." if len(content) > 200 else content
+
+    except Exception as e:
+        return f"Error reading file {os.path.basename(file_path)}: {str(e)}"
 
 
 def process_new_file(filename):
@@ -198,7 +227,7 @@ def process_new_file(filename):
     #     return get_graph_data()
 
     # Create new node data for the file
-    file_path = os.path.join(RAW_FILES_DIR, filename)
+    file_path = os.path.join(RAW_FILES_DIR, 'uploads', filename)
     description = get_file_description(file_path)
 
     # Load the model
@@ -218,7 +247,7 @@ def process_new_file(filename):
     new_node = {
         "id": new_node_id,
         "name": filename,
-        "group": field_to_group["file"],
+        "group": field_to_group["new"],
         "description": description,
         "connections": 0
     }

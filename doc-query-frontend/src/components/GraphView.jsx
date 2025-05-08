@@ -9,6 +9,7 @@ const GROUP_COLORS = {
   // 3: '#F59E0B', // Cybersecurity - Yellow
   // 4: '#10B981', // IoT - Green
   5: '#FFD700', // File - Yellow
+  6: '#EF4444', // New - Red
 };
 
 // Field names for groups
@@ -18,6 +19,7 @@ const GROUP_FIELDS = {
   // 3: 'Cybersecurity',
   // 4: 'IoT',
   5: 'File',
+  6: 'New',
 };
 
 const GraphView = () => {
