@@ -1,18 +1,18 @@
-import { X } from "lucide-react";
+import { X } from 'lucide-react';
 
 export default function FileItem({ file, progress, onRemove }) {
   // Format file size
   const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + " B";
-    else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-    else return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   // Render file icon based on file type
   const getFileIcon = (fileType) => {
-    if (fileType.includes("pdf")) return "📄";
-    if (fileType.includes("word") || fileType.includes("docx")) return "📝";
-    return "📋";
+    if (fileType.includes('pdf')) return '📄';
+    if (fileType.includes('word') || fileType.includes('docx')) return '📝';
+    return '📋';
   };
 
   return (
@@ -33,7 +33,7 @@ export default function FileItem({ file, progress, onRemove }) {
             ></div>
           </div>
           <div className="mt-1 text-xs text-right text-gray-500">
-            {progress === 100 ? "Processed" : `${progress}% uploaded`}
+            {progress === 100 ? 'Processed' : `${progress}% uploaded`}
           </div>
         </div>
       </div>

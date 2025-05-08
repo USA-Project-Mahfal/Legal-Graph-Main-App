@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Upload, X, Info } from "lucide-react";
-import FileItem from "./upload/FileItem";
+import { useState } from 'react';
+import { Upload, X, Info } from 'lucide-react';
+import FileItem from './upload/FileItem';
 
 export default function UploadView({
   uploadedFiles,
@@ -14,9 +14,9 @@ export default function UploadView({
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false);
     }
   };
@@ -48,14 +48,14 @@ export default function UploadView({
         <div
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
             dragActive
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 hover:border-blue-400"
+              ? 'border-blue-500 bg-blue-50'
+              : 'border-gray-300 hover:border-blue-400'
           }`}
           onDragEnter={handleDrag}
           onDragOver={handleDrag}
           onDragLeave={handleDrag}
           onDrop={handleDrop}
-          onClick={() => document.getElementById("file-upload").click()}
+          onClick={() => document.getElementById('file-upload').click()}
         >
           <Upload className="h-12 w-12 mx-auto text-blue-500 mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-1">
