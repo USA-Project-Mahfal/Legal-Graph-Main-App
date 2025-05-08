@@ -4,18 +4,20 @@ import * as THREE from 'three';
 
 // Color mapping for node groups
 const GROUP_COLORS = {
-  1: '#3B82F6', // Web - Blue
-  2: '#EF4444', // Mobile - Red
-  3: '#F59E0B', // Cybersecurity - Yellow
-  4: '#10B981', // IoT - Green
+  // 1: '#3B82F6', // Web - Blue
+  // 2: '#EF4444', // Mobile - Red
+  // 3: '#F59E0B', // Cybersecurity - Yellow
+  // 4: '#10B981', // IoT - Green
+  5: '#FFD700', // File - Yellow
 };
 
 // Field names for groups
 const GROUP_FIELDS = {
-  1: 'Web Application',
-  2: 'Mobile Application',
-  3: 'Cybersecurity',
-  4: 'IoT',
+  // 1: 'Web Application',
+  // 2: 'Mobile Application',
+  // 3: 'Cybersecurity',
+  // 4: 'IoT',
+  5: 'File',
 };
 
 const GraphView = () => {
@@ -106,11 +108,7 @@ const GraphView = () => {
       if (!rotating) return;
 
       const curRotation = graphRef.current.rotation();
-      graphRef.current.rotation({
-        x: curRotation.x,
-        y: curRotation.y + 0.001,
-        z: curRotation.z,
-      });
+      graphRef.current.scene().rotation.y += 0.01;
 
       animationFrameId = requestAnimationFrame(spin);
     };

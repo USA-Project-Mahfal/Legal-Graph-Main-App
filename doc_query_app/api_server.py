@@ -8,7 +8,7 @@ from fastapi import UploadFile, File, Form
 from typing import List
 
 # Import project modules
-from data_manager import get_graph_data
+from data_manager import get_graph_data, process_new_file
 from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION
 
 # Create FastAPI app
@@ -28,8 +28,6 @@ app.add_middleware(
 UPLOAD_DIR = "raw_files"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Endpoint 1: File Upload
-
 
 @app.post("/upload")
 async def upload_doc(file: UploadFile = File(...)):
@@ -43,10 +41,14 @@ async def upload_doc(file: UploadFile = File(...)):
         with open(filepath, "wb") as f:
             f.write(contents)
 
+        # Process the new file and update graph data
+        graph_data = process_new_file(safe_filename)
+
         return {
-            "message": f"File '{safe_filename}' uploaded successfully!",
+            "message": f"File '{safe_filename}' uploaded and processed successfully!",
             "filename": safe_filename,
-            "status": "success"
+            "status": "success",
+            "graph_data": graph_data
         }
     except Exception as e:
         return {
@@ -54,12 +56,12 @@ async def upload_doc(file: UploadFile = File(...)):
             "status": "error"
         }
 
-# Endpoint 2: Multiple File Upload
-
 
 @app.post("/upload-multiple")
 async def upload_multiple_docs(files: List[UploadFile] = File(...)):
     results = []
+    graph_data = None
+
     for file in files:
         try:
             # Create a safe filename
@@ -71,10 +73,13 @@ async def upload_multiple_docs(files: List[UploadFile] = File(...)):
             with open(filepath, "wb") as f:
                 f.write(contents)
 
+            # Process the new file and update graph data
+            graph_data = process_new_file(safe_filename)
+
             results.append({
                 "filename": safe_filename,
                 "status": "success",
-                "message": f"File '{safe_filename}' uploaded successfully!"
+                "message": f"File '{safe_filename}' uploaded and processed successfully!"
             })
         except Exception as e:
             results.append({
@@ -86,7 +91,8 @@ async def upload_multiple_docs(files: List[UploadFile] = File(...)):
     return {
         "results": results,
         "total_files": len(files),
-        "successful_uploads": len([r for r in results if r["status"] == "success"])
+        "successful_uploads": len([r for r in results if r["status"] == "success"]),
+        "graph_data": graph_data
     }
 
 # Endpoint 3: Question/Prompt Submission

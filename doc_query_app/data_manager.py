@@ -4,31 +4,35 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from config import USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD
-from data import project_data
 # Paths for data storage
 GRAPH_DATA_PATH = 'data/graph_data.json'
 EMBEDDINGS_PATH = 'data/embeddings.npy'
 DATA_DIR = 'data'
+RAW_FILES_DIR = 'raw_files'
 
 # Ensure data directory exists
 os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(RAW_FILES_DIR, exist_ok=True)
 
 # Field to group mapping
 field_to_group = {
     "web": 1,
     "mobile": 2,
     "cybersecurity": 3,
-    "iot": 4
+    "iot": 4,
+    "file": 5  # New group for uploaded files
 }
 
 
 def save_embeddings(embeddings):
     """Save embeddings to file"""
+    print("Saving embeddings...")
     np.save(EMBEDDINGS_PATH, embeddings)
 
 
 def load_embeddings():
     """Load embeddings from file if exists, otherwise return None"""
+    print("Loading embeddings...")
     if os.path.exists(EMBEDDINGS_PATH):
         return np.load(EMBEDDINGS_PATH)
     return None
@@ -36,12 +40,14 @@ def load_embeddings():
 
 def save_graph_data(graph_data):
     """Save graph data to file"""
+    print("Saving graph data...")
     with open(GRAPH_DATA_PATH, 'w') as f:
         json.dump(graph_data, f)
 
 
 def load_graph_data():
     """Load graph data from file if exists, otherwise return None"""
+    print("Loading graph data...")
     if os.path.exists(GRAPH_DATA_PATH):
         with open(GRAPH_DATA_PATH, 'r') as f:
             return json.load(f)
@@ -50,8 +56,33 @@ def load_graph_data():
 
 def generate_embeddings():
     """Generate embeddings for project data"""
+    print("Generating embeddings...")
     # Get descriptions from project data
-    descriptions = [project["description"] for project in project_data]
+    # Get descriptions from project data and contract files
+    descriptions = []
+    file_data = []
+
+    # Add contract file descriptions
+    contract_dir = os.path.join(RAW_FILES_DIR, 'full_contract_txt')
+    if os.path.exists(contract_dir):
+        for filename in os.listdir(contract_dir)[:30]:
+            if filename.endswith('.txt'):
+                file_path = os.path.join(contract_dir, filename)
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        # Take first 1000 characters
+                        descriptions.append(content[:1000])
+                        file_data.append({
+                            "id": len(file_data),
+                            "title": filename,
+                            "field": "file",
+                            "description": content[:1000]
+                        })
+                except Exception as e:
+                    print(f"Error reading file {filename}: {str(e)}")
+
+    print("Number of files added:", len(file_data))
 
     # Load pre-trained sentence transformer model
     model = SentenceTransformer(MODEL_NAME)
@@ -62,11 +93,12 @@ def generate_embeddings():
     # Always save new embeddings when generating
     save_embeddings(embeddings)
 
-    return embeddings
+    return embeddings, file_data
 
 
-def create_graph_data(embeddings):
+def create_graph_data(embeddings, file_data):
     """Create graph data from embeddings"""
+    print("Creating graph data...")
     # Compute similarity matrix
     similarity_matrix = cosine_similarity(embeddings)
 
@@ -83,7 +115,7 @@ def create_graph_data(embeddings):
 
     # Create nodes with only essential data
     nodes = []
-    for i, project in enumerate(project_data):
+    for i, project in enumerate(file_data):
         # Calculate node size based on number of connections
         connection_count = len([link for link in links if str(i) in [
                                link["source"], link["target"]]])
@@ -117,7 +149,9 @@ def create_graph_data(embeddings):
 
 def get_graph_data():
     """Get graph data - handle caching based on USE_CACHED_DATA setting"""
+    print("Getting graph data...")
     if USE_CACHED_DATA:
+        print("Using cached data...")
         # Try to load existing graph data
         graph_data = load_graph_data()
         if graph_data:
@@ -135,5 +169,85 @@ def get_graph_data():
             os.remove(EMBEDDINGS_PATH)
 
     # Generate new embeddings and graph data
-    embeddings = generate_embeddings()
-    return create_graph_data(embeddings)
+    embeddings, project_data = generate_embeddings()
+    return create_graph_data(embeddings, project_data)
+
+
+def get_file_description(file_path):
+    """Extract first 200 characters from file content as description"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            return content[:200] + "..." if len(content) > 200 else content
+    except UnicodeDecodeError:
+        return f"Binary file: {os.path.basename(file_path)}"
+
+
+def process_new_file(filename):
+    """Process a newly uploaded file and update graph data"""
+    # Get existing graph data
+    graph_data = load_graph_data()
+    # if not graph_data:
+    #     # If no existing graph data, generate it from scratch
+    #     return get_graph_data()
+
+    # Get existing embeddings
+    embeddings = load_embeddings()
+    # if embeddings is None:
+    #     # If no existing embeddings, generate them
+    #     return get_graph_data()
+
+    # Create new node data for the file
+    file_path = os.path.join(RAW_FILES_DIR, filename)
+    description = get_file_description(file_path)
+
+    # Load the model
+    model = SentenceTransformer(MODEL_NAME)
+
+    # Generate embedding for new file
+    new_embedding = model.encode([description])[0]
+
+    # Add new embedding to existing embeddings
+    updated_embeddings = np.vstack([embeddings, new_embedding])
+
+    # Save updated embeddings
+    save_embeddings(updated_embeddings)
+
+    # Create new node
+    new_node_id = str(len(graph_data['nodes']))
+    new_node = {
+        "id": new_node_id,
+        "name": filename,
+        "group": field_to_group["file"],
+        "description": description,
+        "connections": 0
+    }
+
+    # Calculate similarities with existing nodes
+    similarities = cosine_similarity([new_embedding], embeddings)[0]
+
+    # Create new links based on similarity threshold
+    new_links = []
+    for i, similarity in enumerate(similarities):
+        if similarity > SIMILARITY_THRESHOLD:
+            new_links.append({
+                "source": new_node_id,
+                "target": str(i),
+                "value": float(similarity)
+            })
+            # Update connection count for existing node
+            graph_data['nodes'][i]['connections'] += 1
+
+    # Update new node's connection count
+    new_node['connections'] = len(new_links)
+
+    # Update graph data
+    graph_data['nodes'].append(new_node)
+    graph_data['links'].extend(new_links)
+    graph_data['metadata']['total_nodes'] += 1
+    graph_data['metadata']['total_links'] += len(new_links)
+
+    # Save updated graph data
+    save_graph_data(graph_data)
+
+    return graph_data

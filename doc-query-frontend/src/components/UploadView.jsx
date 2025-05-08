@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, Info } from 'lucide-react';
+import { Upload, Info } from 'lucide-react';
 import FileItem from './upload/FileItem';
 
 export default function UploadView({

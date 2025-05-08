@@ -9,7 +9,7 @@ APP_VERSION = "1.0.0"
 
 # Embedding model settings
 MODEL_NAME = "all-MiniLM-L6-v2"
-SIMILARITY_THRESHOLD = 0.3
+SIMILARITY_THRESHOLD = 0.5
 
 # Data caching settings
 USE_CACHED_DATA = False  # Set to False to regenerate data each time
