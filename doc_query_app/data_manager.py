@@ -5,7 +5,11 @@ import docx
 import PyPDF2
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from config import USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD, MAX_CHAR_LIMIT
+from config import (
+    USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD, MAX_CHAR_LIMIT,
+    RETRAIN_GNN, GNN_TRAIN_EPOCHS
+)
+from GNN import gnn_manager
 # Paths for data storage
 GRAPH_DATA_PATH = 'data/graph_data.json'
 EMBEDDINGS_PATH = 'data/embeddings.npy'
@@ -27,6 +31,14 @@ field_to_group = {
 def save_embeddings(embeddings):
     """Save embeddings to file"""
     print("Saving embeddings...")
+    os.makedirs(os.path.dirname(EMBEDDINGS_PATH), exist_ok=True)
+    np.save(EMBEDDINGS_PATH, embeddings)
+
+
+def save_refined_embeddings(embeddings):
+    """Save embeddings to file"""
+    print("Saving embeddings...")
+    os.makedirs(os.path.dirname(EMBEDDINGS_PATH), exist_ok=True)
     np.save(EMBEDDINGS_PATH, embeddings)
 
 
@@ -41,6 +53,7 @@ def load_embeddings():
 def save_graph_data(graph_data):
     """Save graph data to file"""
     print("Saving graph data...")
+    os.makedirs(os.path.dirname(GRAPH_DATA_PATH), exist_ok=True)
     with open(GRAPH_DATA_PATH, 'w') as f:
         json.dump(graph_data, f)
 
@@ -73,7 +86,6 @@ def load_file_data():
 def generate_embeddings():
     """Generate embeddings for project data"""
     print("Generating embeddings...")
-    # Get descriptions from project data
     # Get descriptions from project data and contract files
     descriptions = []
     file_data = []
@@ -116,12 +128,26 @@ def generate_embeddings():
     # Generate embeddings
     embeddings = model.encode(descriptions)
 
+    # Create initial graph data to get links
+    initial_graph_data = create_graph_data(embeddings, file_data)
+
+    # Refine embeddings using GNN
+    if RETRAIN_GNN:
+        print("Training GNN model...")
+        gnn_manager.train_model(
+            embeddings, initial_graph_data['links'], epochs=GNN_TRAIN_EPOCHS)
+
+    print("Refining embeddings using GNN...")
+    refined_embeddings = gnn_manager.refine_embeddings(
+        embeddings, initial_graph_data['links'])
+
     # Always save new embeddings when generating
     save_embeddings(embeddings)
+    save_refined_embeddings(refined_embeddings)
     # Always save new file data when generating
     save_file_data(file_data)
 
-    return embeddings, file_data
+    return refined_embeddings, file_data
 
 
 def create_graph_data(embeddings, file_data):
@@ -157,11 +183,18 @@ def create_graph_data(embeddings, file_data):
         })
 
     # Create minimal graph data structure
+    # Count nodes in each field group
+    field_group_counts = {}
+    for node in nodes:
+        group = node["group"]
+        field_group_counts[group] = field_group_counts.get(group, 0) + 1
+
     graph_data = {
         "nodes": nodes,
         "links": links,
         "metadata": {
             "field_groups": field_to_group,
+            "field_group_counts": field_group_counts,
             "total_nodes": len(nodes),
             "total_links": len(links)
         }
@@ -188,7 +221,7 @@ def get_graph_data():
         # If no graph data, try to use existing embeddings
         embeddings = load_embeddings()
         file_data = load_file_data()
-        if embeddings is not None:
+        if embeddings is not None and file_data is not None:
             return create_graph_data(embeddings, file_data)
     else:
         # If not using cached data, remove old files if they exist
@@ -229,15 +262,15 @@ def process_new_file(filename):
     """Process a newly uploaded file and update graph data"""
     # Get existing graph data
     graph_data = load_graph_data()
-    # if not graph_data:
-    #     # If no existing graph data, generate it from scratch
-    #     return get_graph_data()
+    if not graph_data:
+        # If no existing graph data, generate it from scratch
+        return get_graph_data()
 
     # Get existing embeddings
     embeddings = load_embeddings()
-    # if embeddings is None:
-    #     # If no existing embeddings, generate them
-    #     return get_graph_data()
+    if embeddings is None:
+        # If no existing embeddings, generate them
+        return get_graph_data()
 
     # Create new node data for the file
     file_path = os.path.join(RAW_FILES_DIR, 'uploads', filename)
@@ -252,8 +285,13 @@ def process_new_file(filename):
     # Add new embedding to existing embeddings
     updated_embeddings = np.vstack([embeddings, new_embedding])
 
+    # Refine embeddings using GNN
+    print("Refining embeddings using GNN...")
+    refined_embeddings = gnn_manager.refine_embeddings(
+        updated_embeddings, graph_data['links'])
+
     # Save updated embeddings
-    save_embeddings(updated_embeddings)
+    save_embeddings(refined_embeddings)
 
     # Create new node
     new_node_id = str(len(graph_data['nodes']))
@@ -265,8 +303,9 @@ def process_new_file(filename):
         "connections": 0
     }
 
-    # Calculate similarities with existing nodes
-    similarities = cosine_similarity([new_embedding], embeddings)[0]
+    # Calculate similarities with existing nodes using refined embeddings
+    similarities = cosine_similarity(
+        [refined_embeddings[-1]], refined_embeddings[:-1])[0]
 
     # Create new links based on similarity threshold
     new_links = []
