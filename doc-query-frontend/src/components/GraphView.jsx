@@ -156,6 +156,9 @@ const GraphView = () => {
   };
 
   if (error) {
+    // Determine if this is the no embeddings error
+    const isNoEmbeddingsError = error.includes('No embeddings available');
+
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-900">
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-red-400 max-w-md">
@@ -164,7 +167,7 @@ const GraphView = () => {
           </p>
           <p className="text-sm mt-2">{error}</p>
 
-          {error === 'No embeddings available' && (
+          {isNoEmbeddingsError && (
             <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-400 text-sm">
               <p className="font-medium">To get started:</p>
               <ol className="list-decimal ml-5 mt-2 space-y-1">

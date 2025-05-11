@@ -354,6 +354,31 @@ class GNNManager:
                 neighbors.append(int(link['source']))
         return list(set(neighbors))  # Remove duplicates
 
+    def initialize_with_embeddings(self, embeddings: np.ndarray) -> None:
+        """Initialize the GNN with new embeddings.
+
+        Args:
+            embeddings: Array of embeddings for nodes
+        """
+        print(f"Initializing GNN with {len(embeddings)} embeddings")
+
+        # Save the raw embeddings
+        self._save_npy(self.embeddings_path, embeddings)
+        self.embeddings = embeddings
+        self.input_dim = embeddings.shape[1]
+
+        # Initialize an empty graph links list
+        self.graph_links = []
+        self._save_json(self.graph_path, self.graph_links)
+
+        # Reset the refined embeddings
+        if os.path.exists(self.refined_path):
+            os.remove(self.refined_path)
+
+        # Force retrain the model with the new embeddings
+        self.model = None  # Reset the model to ensure it's re-initialized properly
+        print("Model will be retrained with new dimensions on next refinement")
+
 
 # Singleton instance
 gnn_manager = GNNManager()
