@@ -1,334 +1,263 @@
-import json
+# data_manager.py
+
 import os
+import json
 import numpy as np
 import docx
 import PyPDF2
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from typing import Dict, List, Optional, Tuple, Any
+
 from config import (
-    USE_CACHED_DATA, MODEL_NAME, SIMILARITY_THRESHOLD, MAX_CHAR_LIMIT,
-    RETRAIN_GNN, GNN_TRAIN_EPOCHS
+    DATA_DIR, RAW_FILES_DIR, MODEL_NAME, SIMILARITY_THRESHOLD,
+    MAX_CHAR_LIMIT, RETRAIN_GNN, USE_CACHED_DATA
 )
 from GNN import gnn_manager
-# Paths for data storage
-GRAPH_DATA_PATH = 'data/graph_data.json'
-EMBEDDINGS_PATH = 'data/embeddings.npy'
-FILE_DATA_PATH = 'data/file_data.json'
-DATA_DIR = 'data'
-RAW_FILES_DIR = 'raw_files'
-
-# Ensure data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(RAW_FILES_DIR, exist_ok=True)
-
-# Field to group mapping
-field_to_group = {
-    "file": 5,  # New group for uploaded files
-    "new": 6  # New group for uploaded files
-}
 
 
-def save_embeddings(embeddings):
-    """Save embeddings to file"""
-    print("Saving embeddings...")
-    os.makedirs(os.path.dirname(EMBEDDINGS_PATH), exist_ok=True)
-    np.save(EMBEDDINGS_PATH, embeddings)
+class DataManager:
+    """Manager for document data, embeddings, and graph structure."""
 
+    def __init__(self):
+        """Initialize the DataManager."""
+        # File paths
+        self.data_dir = DATA_DIR
+        self.raw_files_dir = RAW_FILES_DIR
+        self.graph_data_path = os.path.join(self.data_dir, "graph_data.json")
+        self.file_data_path = os.path.join(self.data_dir, "file_data.json")
 
-def save_refined_embeddings(embeddings):
-    """Save embeddings to file"""
-    print("Saving embeddings...")
-    os.makedirs(os.path.dirname(EMBEDDINGS_PATH), exist_ok=True)
-    np.save(EMBEDDINGS_PATH, embeddings)
+        # Ensure directories exist
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.raw_files_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.raw_files_dir, "uploads"), exist_ok=True)
+        os.makedirs(os.path.join(self.raw_files_dir,
+                    "full_contract_txt"), exist_ok=True)
 
-
-def load_embeddings():
-    """Load embeddings from file if exists, otherwise return None"""
-    print("Loading embeddings...")
-    if os.path.exists(EMBEDDINGS_PATH):
-        return np.load(EMBEDDINGS_PATH)
-    return None
-
-
-def save_graph_data(graph_data):
-    """Save graph data to file"""
-    print("Saving graph data...")
-    os.makedirs(os.path.dirname(GRAPH_DATA_PATH), exist_ok=True)
-    with open(GRAPH_DATA_PATH, 'w') as f:
-        json.dump(graph_data, f)
-
-
-def load_graph_data():
-    """Load graph data from file if exists, otherwise return None"""
-    print("Loading graph data...")
-    if os.path.exists(GRAPH_DATA_PATH):
-        with open(GRAPH_DATA_PATH, 'r') as f:
-            return json.load(f)
-    return None
-
-
-def save_file_data(file_data):
-    """Save file data to file"""
-    print("Saving file data...")
-    with open(FILE_DATA_PATH, 'w') as f:
-        json.dump(file_data, f)
-
-
-def load_file_data():
-    """Load file data from file if exists, otherwise return None"""
-    print("Loading file data...")
-    if os.path.exists(FILE_DATA_PATH):
-        with open(FILE_DATA_PATH, 'r') as f:
-            return json.load(f)
-    return None
-
-
-def generate_embeddings():
-    """Generate embeddings for project data"""
-    print("Generating embeddings...")
-    # Get descriptions from project data and contract files
-    descriptions = []
-    file_data = []
-
-    def process_directory(directory, field_type, limit=30):
-        """Process files in a directory and add them to descriptions and file_data"""
-        if not os.path.exists(directory):
-            return
-
-        for filename in os.listdir(directory)[:limit]:
-            if not filename.endswith('.txt'):
-                continue
-
-            file_path = os.path.join(directory, filename)
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    descriptions.append(content[:MAX_CHAR_LIMIT])
-                    file_data.append({
-                        "id": len(file_data),
-                        "title": filename,
-                        "field": field_type,
-                        "description": content[:MAX_CHAR_LIMIT]
-                    })
-            except Exception as e:
-                print(f"Error reading file {filename}: {str(e)}")
-
-    # Process both directories
-    contract_dir = os.path.join(RAW_FILES_DIR, 'full_contract_txt')
-    uploads_dir = os.path.join(RAW_FILES_DIR, 'uploads')
-
-    process_directory(contract_dir, "file", 30)
-    process_directory(uploads_dir, "new")
-
-    print("Number of files added:", len(file_data))
-
-    # Load pre-trained sentence transformer model
-    model = SentenceTransformer(MODEL_NAME)
-
-    # Generate embeddings
-    embeddings = model.encode(descriptions)
-
-    # Create initial graph data to get links
-    initial_graph_data = create_graph_data(embeddings, file_data)
-
-    # Refine embeddings using GNN
-    if RETRAIN_GNN:
-        print("Training GNN model...")
-        gnn_manager.train_model(
-            embeddings, initial_graph_data['links'], epochs=GNN_TRAIN_EPOCHS)
-
-    print("Refining embeddings using GNN...")
-    refined_embeddings = gnn_manager.refine_embeddings(
-        embeddings, initial_graph_data['links'])
-
-    # Always save new embeddings when generating
-    save_embeddings(embeddings)
-    save_refined_embeddings(refined_embeddings)
-    # Always save new file data when generating
-    save_file_data(file_data)
-
-    return refined_embeddings, file_data
-
-
-def create_graph_data(embeddings, file_data):
-    """Create graph data from embeddings"""
-    print("Creating graph data...")
-    # Compute similarity matrix
-    similarity_matrix = cosine_similarity(embeddings)
-
-    # Create links between nodes based on similarity threshold
-    links = []
-    for i in range(len(similarity_matrix)):
-        for j in range(i+1, len(similarity_matrix)):
-            if similarity_matrix[i][j] > SIMILARITY_THRESHOLD:
-                links.append({
-                    "source": str(i),
-                    "target": str(j),
-                    "value": float(similarity_matrix[i][j])
-                })
-
-    # Create nodes with only essential data
-    nodes = []
-    for i, project in enumerate(file_data):
-        # Calculate node size based on number of connections
-        connection_count = len([link for link in links if str(i) in [
-                               link["source"], link["target"]]])
-
-        nodes.append({
-            "id": str(i),
-            "name": project["title"],
-            "group": field_to_group[project["field"]],
-            "description": project["description"],
-            "connections": connection_count  # Let frontend calculate size based on this
-        })
-
-    # Create minimal graph data structure
-    # Count nodes in each field group
-    field_group_counts = {}
-    for node in nodes:
-        group = node["group"]
-        field_group_counts[group] = field_group_counts.get(group, 0) + 1
-
-    graph_data = {
-        "nodes": nodes,
-        "links": links,
-        "metadata": {
-            "field_groups": field_to_group,
-            "field_group_counts": field_group_counts,
-            "total_nodes": len(nodes),
-            "total_links": len(links)
+        # Field to group mapping
+        self.field_to_group = {
+            "file": 5,  # Contract files
+            "new": 6    # Newly uploaded files
         }
-    }
 
-    # Always save new graph data when creating
-    print(
-        f"Generated graph data with {len(nodes)} nodes and {len(links)} links")
-    save_graph_data(graph_data)
+        # File type handlers
+        self.file_handlers = {
+            '.pdf': lambda f: PyPDF2.PdfReader(f).pages[0].extract_text(),
+            '.docx': lambda f: docx.Document(f).paragraphs[0].text if docx.Document(f).paragraphs else "",
+            'default': lambda f: f.read()
+        }
 
-    return graph_data
+        # Initialize embedding model
+        self.model = SentenceTransformer(MODEL_NAME)
 
+    def _save_json(self, path: str, data: Any) -> None:
+        """Save data as JSON."""
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            json.dump(data, f)
 
-def get_graph_data():
-    """Get graph data - handle caching based on USE_CACHED_DATA setting"""
-    print("Getting graph data...")
-    if USE_CACHED_DATA:
-        print("Using cached data...")
-        # Try to load existing graph data
-        graph_data = load_graph_data()
-        if graph_data:
-            return graph_data
+    def _load_json(self, path: str) -> Optional[Dict]:
+        """Load JSON data if file exists."""
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                return json.load(f)
+        return None
 
-        # If no graph data, try to use existing embeddings
-        embeddings = load_embeddings()
-        file_data = load_file_data()
-        if embeddings is not None and file_data is not None:
-            return create_graph_data(embeddings, file_data)
-    else:
-        # If not using cached data, remove old files if they exist
-        if os.path.exists(GRAPH_DATA_PATH):
-            os.remove(GRAPH_DATA_PATH)
-        if os.path.exists(EMBEDDINGS_PATH):
-            os.remove(EMBEDDINGS_PATH)
+    def save_graph_data(self, graph_data: Dict) -> None:
+        """Save graph data to file."""
+        print("Saving graph data...")
+        self._save_json(self.graph_data_path, graph_data)
 
-    # Generate new embeddings and graph data
-    embeddings, file_data = generate_embeddings()
-    return create_graph_data(embeddings, file_data)
+    def load_graph_data(self) -> Optional[Dict]:
+        """Load graph data from file if it exists."""
+        print("Loading graph data...")
+        return self._load_json(self.graph_data_path)
 
+    def save_file_data(self, file_data: List[Dict]) -> None:
+        """Save file data to file."""
+        print("Saving file data...")
+        self._save_json(self.file_data_path, file_data)
 
-def get_file_description(file_path):
-    """Extract content from file and return truncated description"""
-    file_handlers = {
-        '.pdf': lambda f: PyPDF2.PdfReader(f).pages[0].extract_text(),
-        '.docx': lambda f: docx.Document(f).paragraphs[0].text if docx.Document(f).paragraphs else "",
-        'default': lambda f: f.read()
-    }
+    def load_file_data(self) -> Optional[List[Dict]]:
+        """Load file data from file if it exists."""
+        print("Loading file data...")
+        return self._load_json(self.file_data_path)
 
-    try:
-        file_ext = os.path.splitext(file_path)[1].lower()
-        handler = file_handlers.get(file_ext, file_handlers['default'])
+    def get_file_description(self, file_path: str) -> str:
+        """Extract content from file and return truncated description."""
+        try:
+            ext = os.path.splitext(file_path)[1].lower()
+            handler = self.file_handlers.get(
+                ext, self.file_handlers['default'])
 
-        open_mode = 'rb' if file_ext == '.pdf' else 'r'
-        encoding = None if file_ext == '.pdf' else 'utf-8'
+            mode = 'rb' if ext == '.pdf' else 'r'
+            encoding = None if ext == '.pdf' else 'utf-8'
 
-        with open(file_path, open_mode, encoding=encoding) as f:
-            content = handler(f)
+            with open(file_path, mode, encoding=encoding) as f:
+                content = handler(f)
+
+            # Truncate and return
             return content[:MAX_CHAR_LIMIT] + "..." if len(content) > MAX_CHAR_LIMIT else content
 
-    except Exception as e:
-        return f"Error reading file {os.path.basename(file_path)}: {str(e)}"
+        except Exception as e:
+            return f"Error reading file {os.path.basename(file_path)}: {str(e)}"
 
+    def process_new_file(self, filename: str) -> Dict:
+        """Process a newly uploaded file and update the graph."""
+        # Get file path and extract description
+        file_path = os.path.join(self.raw_files_dir, 'uploads', filename)
+        description = self.get_file_description(file_path)
 
-def process_new_file(filename):
-    """Process a newly uploaded file and update graph data"""
-    # Get existing graph data
-    graph_data = load_graph_data()
-    if not graph_data:
-        # If no existing graph data, generate it from scratch
-        return get_graph_data()
+        if "Error reading" in description:
+            return {"error": description}
 
-    # Get existing embeddings
-    embeddings = load_embeddings()
-    if embeddings is None:
-        # If no existing embeddings, generate them
-        return get_graph_data()
+        # Generate embedding for the new file
+        new_embedding = self.model.encode([description])[0]
 
-    # Create new node data for the file
-    file_path = os.path.join(RAW_FILES_DIR, 'uploads', filename)
-    description = get_file_description(file_path)
+        # Make sure GNN manager is synced with latest data
+        gnn_manager.reload()
+        current_embeddings = gnn_manager.embeddings
 
-    # Load the model
-    model = SentenceTransformer(MODEL_NAME)
+        if current_embeddings is None:
+            # First file - initialize graph
+            new_node_id = gnn_manager.add_node(
+                new_embedding.reshape(1, -1), [])
+            graph_data = {
+                "nodes": [{
+                    "id": "0",
+                    "name": filename,
+                    "group": self.field_to_group["new"],
+                    "description": description,
+                    "connections": 0
+                }],
+                "links": [],
+                "metadata": {
+                    "field_groups": self.field_to_group,
+                    "field_group_counts": {self.field_to_group["new"]: 1},
+                    "total_nodes": 1,
+                    "total_links": 0
+                }
+            }
+            self.save_graph_data(graph_data)
+            return graph_data
 
-    # Generate embedding for new file
-    new_embedding = model.encode([description])[0]
+        # Find neighbors using similarity
+        similarities = cosine_similarity(
+            [new_embedding], current_embeddings)[0]
+        neighbors = [i for i, s in enumerate(
+            similarities) if s > SIMILARITY_THRESHOLD]
 
-    # Add new embedding to existing embeddings
-    updated_embeddings = np.vstack([embeddings, new_embedding])
+        # Add node to GNN and get its ID
+        new_node_id = gnn_manager.add_node(
+            new_embedding.reshape(1, -1), neighbors)
 
-    # Refine embeddings using GNN
-    print("Refining embeddings using GNN...")
-    refined_embeddings = gnn_manager.refine_embeddings(
-        updated_embeddings, graph_data['links'])
+        # Refine embeddings using the GNN
+        gnn_manager.refine_embeddings(RETRAIN_GNN)
 
-    # Save updated embeddings
-    save_embeddings(refined_embeddings)
+        # Update graph data
+        graph_data = self.load_graph_data()
+        if not graph_data:
+            return {"error": "Failed to load graph data"}
 
-    # Create new node
-    new_node_id = str(len(graph_data['nodes']))
-    new_node = {
-        "id": new_node_id,
-        "name": filename,
-        "group": field_to_group["new"],
-        "description": description,
-        "connections": 0
-    }
+        # Create new node entry
+        new_node_str = str(new_node_id)
+        new_node = {
+            "id": new_node_str,
+            "name": filename,
+            "group": self.field_to_group["new"],
+            "description": description,
+            "connections": len(neighbors)
+        }
 
-    # Calculate similarities with existing nodes using refined embeddings
-    similarities = cosine_similarity(
-        [refined_embeddings[-1]], refined_embeddings[:-1])[0]
+        # Create links to neighbors
+        new_links = [
+            {"source": new_node_str, "target": str(
+                n), "value": float(similarities[n])}
+            for n in neighbors
+        ]
 
-    # Create new links based on similarity threshold
-    new_links = []
-    for i, similarity in enumerate(similarities):
-        if similarity > SIMILARITY_THRESHOLD:
-            new_links.append({
-                "source": new_node_id,
-                "target": str(i),
-                "value": float(similarity)
+        # Update connection counts for neighbors
+        for link in new_links:
+            target_idx = int(link['target'])
+            if target_idx < len(graph_data['nodes']):
+                graph_data['nodes'][target_idx]['connections'] += 1
+
+        # Update graph data structure
+        graph_data["nodes"].append(new_node)
+        graph_data["links"].extend(new_links)
+        graph_data["metadata"]["total_nodes"] += 1
+        graph_data["metadata"]["total_links"] += len(new_links)
+
+        # Update field group counts
+        group = self.field_to_group["new"]
+        if "field_group_counts" not in graph_data["metadata"]:
+            graph_data["metadata"]["field_group_counts"] = {}
+        graph_data["metadata"]["field_group_counts"][str(
+            group)] = graph_data["metadata"]["field_group_counts"].get(str(group), 0) + 1
+
+        # Save updated graph data
+        self.save_graph_data(graph_data)
+        return graph_data
+
+    def get_graph_data(self) -> Dict:
+        """Get the current graph data structure."""
+        # Try to load existing graph data
+        graph_data = self.load_graph_data()
+        if graph_data and USE_CACHED_DATA:
+            return graph_data
+
+        # Get data from GNN manager
+        gnn_manager.reload()
+        embeddings = gnn_manager.embeddings
+
+        if embeddings is None:
+            return {"error": "No embeddings available"}
+
+        # Build graph from GNN data
+        links = gnn_manager.graph_links
+        nodes = []
+
+        # Create nodes
+        for i in range(len(embeddings)):
+            # Count connections for this node
+            conn_count = sum(1 for link in links
+                             if str(link.get("source")) == str(i) or str(link.get("target")) == str(i))
+
+            # Create node entry
+            nodes.append({
+                "id": str(i),
+                "name": f"Node {i}",
+                "group": self.field_to_group["new"],
+                "description": f"Auto-generated node {i}",
+                "connections": conn_count
             })
-            # Update connection count for existing node
-            graph_data['nodes'][i]['connections'] += 1
 
-    # Update new node's connection count
-    new_node['connections'] = len(new_links)
+        # Count nodes by group
+        field_group_counts = {}
+        for node in nodes:
+            g_str = str(node["group"])
+            field_group_counts[g_str] = field_group_counts.get(g_str, 0) + 1
 
-    # Update graph data
-    graph_data['nodes'].append(new_node)
-    graph_data['links'].extend(new_links)
-    graph_data['metadata']['total_nodes'] += 1
-    graph_data['metadata']['total_links'] += len(new_links)
+        # Create graph data structure
+        graph_data = {
+            "nodes": nodes,
+            "links": [
+                {"source": str(link.get("source")), "target": str(
+                    link.get("target")), "value": 1.0}
+                for link in links
+            ],
+            "metadata": {
+                "total_nodes": len(nodes),
+                "total_links": len(links),
+                "field_groups": self.field_to_group,
+                "field_group_counts": field_group_counts
+            }
+        }
 
-    # Save updated graph data
-    save_graph_data(graph_data)
+        # Save and return
+        self.save_graph_data(graph_data)
+        return graph_data
 
-    return graph_data
+
+# Create singleton instance
+data_manager = DataManager()

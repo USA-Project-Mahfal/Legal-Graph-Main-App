@@ -1,21 +1,21 @@
-from fastapi import FastAPI, Request
+# api_server.py
+
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-import uvicorn
+from typing import List, Dict, Any
 import os
-from fastapi import UploadFile, File, Form
-from typing import List
 
-# Import project modules
-from data_manager import get_graph_data, process_new_file
-from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION
+from data_manager import data_manager
+from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION, RAW_FILES_DIR
 
-# Create FastAPI app
-app = FastAPI(title=APP_TITLE, description=APP_DESCRIPTION,
-              version=APP_VERSION)
+# Initialize FastAPI application
+app = FastAPI(
+    title=APP_TITLE,
+    description=APP_DESCRIPTION,
+    version=APP_VERSION
+)
 
-# Enable CORS for local development
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,63 +25,91 @@ app.add_middleware(
 )
 
 # Ensure upload directory exists
-UPLOAD_DIR = "raw_files/uploads"
+UPLOAD_DIR = os.path.join(RAW_FILES_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @app.post("/upload-multiple")
-async def upload_multiple_docs(files: List[UploadFile] = File(...)):
+async def upload_multiple_docs(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
+    """Upload and process multiple document files.
+
+    Args:
+        files: List of files to upload
+
+    Returns:
+        Dictionary with upload results and graph data
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
     results = []
     graph_data = None
 
     for file in files:
-        try:
-            # Create a safe filename
-            safe_filename = file.filename.replace(" ", "_")
-            filepath = os.path.join(UPLOAD_DIR, safe_filename)
+        # Clean filename
+        safe_filename = file.filename.replace(" ", "_")
+        file_path = os.path.join(UPLOAD_DIR, safe_filename)
 
-            # Save the file
+        try:
+            # Save file to disk
             contents = await file.read()
-            with open(filepath, "wb") as f:
+            with open(file_path, "wb") as f:
                 f.write(contents)
 
-            # Process the new file and update graph data
-            graph_data = process_new_file(safe_filename)
+            # Process file using data manager
+            graph_data = data_manager.process_new_file(safe_filename)
 
+            # Check for errors
+            if isinstance(graph_data, dict) and "error" in graph_data:
+                print("Error:", graph_data["error"])
+                results.append({
+                    "filename": safe_filename,
+                    "status": "error",
+                    "message": graph_data["error"]
+                })
+            else:
+                results.append({
+                    "filename": safe_filename,
+                    "status": "success",
+                    "message": f"File '{safe_filename}' uploaded and processed."
+                })
+
+        except Exception as e:
+            print("Error:", str(e))
             results.append({
                 "filename": safe_filename,
-                "status": "success",
-                "message": f"File '{safe_filename}' uploaded and processed successfully!"
-            })
-        except Exception as e:
-            results.append({
-                "filename": file.filename,
                 "status": "error",
-                "message": f"Error uploading file: {str(e)}"
+                "message": f"Error: {str(e)}"
             })
 
+    # Return results
     return {
         "results": results,
         "total_files": len(files),
         "successful_uploads": len([r for r in results if r["status"] == "success"]),
-        "graph_data": graph_data
+        "graph_data": graph_data  # Most recent graph state
     }
-
-# Endpoint 3: Question/Prompt Submission
-
-
-@app.post("/ask")
-async def ask_question(question: str = Form(...)):
-    print("Received question:", question)
-    return {"response": f"You asked: {question}"}
-
-# Endpoint 4: Get Graph Data
 
 
 @app.get("/graph")
-async def get_graph():
-    """Return graph data for 3D visualization"""
-    return get_graph_data()
+async def get_graph() -> Dict[str, Any]:
+    """Get graph data for visualization.
+
+    Returns:
+        Graph data structure with nodes, links, and metadata
+    """
+    graph_data = data_manager.get_graph_data()
+
+    # Check for errors
+    if isinstance(graph_data, dict) and "error" in graph_data:
+        error_message = graph_data["error"]
+        print("Error:", error_message)
+
+        # Raise HTTP exception with the error message
+        raise HTTPException(status_code=500, detail=error_message)
+
+    return graph_data
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host=HOST, port=PORT)
