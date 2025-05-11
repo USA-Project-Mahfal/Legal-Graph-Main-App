@@ -1,0 +1,1 @@
+{"version": "1.0.0", "input_dim": 384, "hidden_dim": 256, "output_dim": 384, "num_layers": 3}

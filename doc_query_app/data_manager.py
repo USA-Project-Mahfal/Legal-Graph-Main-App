@@ -31,6 +31,7 @@ class DataManager:
             '.docx': lambda f: docx.Document(f).paragraphs[0].text if docx.Document(f).paragraphs else "",
             'default': lambda f: f.read()
         }
+        self.init_embeddings_and_pilot_model()
 
     # =====================
     # === Public Methods ==
@@ -72,13 +73,11 @@ class DataManager:
             return graph
 
         gnn_manager.reload()
-        embeddings = gnn_manager.embeddings
-        links = gnn_manager.graph_links
 
-        if embeddings is None or links is None:
-            self.init_embeddings_and_pilot_model()
-        if embeddings is None or links is None:
-            return {"error": "No embeddings or links found. Upload documents to build the graph."}
+        # if gnn_manager.embeddings is None:
+        #     self.init_embeddings_and_pilot_model()
+        if gnn_manager.embeddings is None:
+            return {"error": "No embeddings found. Upload documents to build the graph."}
         graph = self._load_json(self.graph_data_path)
         return graph
 
