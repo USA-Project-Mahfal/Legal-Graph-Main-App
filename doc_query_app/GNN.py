@@ -17,29 +17,9 @@ from config import (
 # Paths and config
 MODEL_PATH = "models/gnn_model.pt"
 DATA_DIR = "data"
-# RAW_EMBEDDINGS_PATH = os.path.join(DATA_DIR, "raw_embeddings.npy")
-# REFINED_EMBEDDINGS_PATH = os.path.join(DATA_DIR, "refined_embeddings.npy")
-# GRAPH_DATA_PATH = os.path.join(DATA_DIR, "graph_data.json")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs("models", exist_ok=True)
-
-
-# def save_json(path, data):
-#     with open(path, 'w') as f:
-#         json.dump(data, f)
-
-
-# def load_json(path):
-#     return json.load(open(path)) if os.path.exists(path) else None
-
-
-# def save_npy(path, array):
-#     np.save(path, array)
-
-
-# def load_npy(path):
-#     return np.load(path) if os.path.exists(path) else None
 
 
 class GraphSAGE(nn.Module):

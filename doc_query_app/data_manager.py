@@ -46,24 +46,29 @@ class DataManager:
         embedding = self.model.encode([description])[0]
         gnn_manager.reload()
 
+        # Handle first node case or existing graph case
         if gnn_manager.embeddings is None:
-            return self._init_first_node(filename, description, embedding)
+            # Create first node
+            gnn_manager.add_node(embedding.reshape(1, -1), [])
+            node = self._create_node(
+                "0", filename, description, self.field_to_group["new"], 0)
+            graph = self._update_graph_structure([node], [])
+        else:
+            # Add to existing graph
+            neighbors, sims = self._find_neighbors(
+                embedding, gnn_manager.embeddings)
+            new_node_id = gnn_manager.add_node(
+                embedding.reshape(1, -1), neighbors)
+            new_node = self._create_node(str(new_node_id), filename, description,
+                                         self.field_to_group["new"], len(neighbors))
+            new_links = [
+                {"source": str(new_node_id), "target": str(n),
+                 "value": float(sims[n])}
+                for n in neighbors
+            ]
+            graph = self._update_graph_structure([new_node], new_links)
+            self.refine_embeddings()
 
-        neighbors, sims = self._find_neighbors(
-            embedding, gnn_manager.embeddings)
-        new_node_id = gnn_manager.add_node(embedding.reshape(1, -1), neighbors)
-
-        new_node = self._create_node(str(new_node_id), filename, description,
-                                     self.field_to_group["new"], len(neighbors))
-        new_links = [
-            {"source": str(new_node_id), "target": str(n),
-             "value": float(sims[n])}
-            for n in neighbors
-        ]
-
-        self._maybe_refine_embeddings(is_initial=False, links=new_links)
-
-        graph = self._update_graph_with_node(new_node, new_links)
         self._save_json(self.graph_data_path, graph)
         return graph
 
@@ -73,13 +78,10 @@ class DataManager:
             return graph
 
         gnn_manager.reload()
-
-        # if gnn_manager.embeddings is None:
-        #     self.init_embeddings_and_pilot_model()
         if gnn_manager.embeddings is None:
             return {"error": "No embeddings found. Upload documents to build the graph."}
-        graph = self._load_json(self.graph_data_path)
-        return graph
+
+        return self._load_json(self.graph_data_path)
 
     def init_embeddings_and_pilot_model(self) -> bool:
         descriptions, file_data = [], []
@@ -96,8 +98,14 @@ class DataManager:
             embeddings = self.model.encode(descriptions)
             gnn_manager.initialize_with_embeddings(embeddings)
             links = self._compute_similar_links(embeddings)
-            self._save_links_to_gnn(links)
 
+            # Save links to GNN
+            graph_links = [{"source": l["source"],
+                            "target": l["target"]} for l in links]
+            gnn_manager.graph_links = graph_links
+            gnn_manager._save_json(gnn_manager.graph_path, graph_links)
+
+            # Create nodes
             nodes = []
             for i, f in enumerate(file_data):
                 g = self.field_to_group.get(
@@ -105,15 +113,17 @@ class DataManager:
                 nodes.append(self._create_node(
                     str(i), f["title"], f["description"], g, 0))
 
+            # Update connections count
             for link in links:
                 nodes[int(link["source"])]["connections"] += 1
                 nodes[int(link["target"])]["connections"] += 1
 
-            graph = self._build_graph_structure(nodes, links)
+            # Build and save graph
+            graph = self._update_graph_structure(nodes, links, is_initial=True)
             self._save_json(self.graph_data_path, graph)
             self._save_json(self.file_data_path, file_data)
 
-            self._maybe_refine_embeddings(is_initial=True, links=links)
+            self.refine_embeddings()
             return True
         except Exception as e:
             print(f"Error during embedding generation: {e}")
@@ -122,15 +132,6 @@ class DataManager:
     # ========================
     # === Internal Helpers ===
     # ========================
-
-    def _init_first_node(self, name, desc, emb) -> Dict:
-        node = self._create_node(
-            "0", name, desc, self.field_to_group["new"], 0)
-        gnn_manager.add_node(emb.reshape(1, -1), [])
-        graph = self._build_graph_structure([node], [])
-        self._save_json(self.graph_data_path, graph)
-        self._maybe_refine_embeddings(is_initial=True, links=[])
-        return graph
 
     def _create_node(self, node_id: str, name: str, desc: str, group: int, conn: int) -> Dict:
         return {
@@ -141,42 +142,54 @@ class DataManager:
             "connections": conn
         }
 
-    def _build_graph_structure(self, nodes: List[Dict], links: List[Dict]) -> Dict:
-        counts = {}
-        for n in nodes:
-            g = str(n["group"])
-            counts[g] = counts.get(g, 0) + 1
-        return {
-            "nodes": nodes,
-            "links": links,
-            "metadata": {
-                "total_nodes": len(nodes),
-                "total_links": len(links),
-                "field_groups": self.field_to_group,
-                "field_group_counts": counts
-            }
-        }
-
-    def _update_graph_with_node(self, node: Dict, links: List[Dict]) -> Dict:
-        graph = self._load_json(
-            self.graph_data_path) or self._build_graph_structure([], [])
-        for l in links:
-            idx = int(l["target"])
-            if idx < len(graph["nodes"]):
-                graph["nodes"][idx]["connections"] += 1
-        graph["nodes"].append(node)
-        graph["links"].extend(links)
-        graph["metadata"]["total_nodes"] += 1
-        graph["metadata"]["total_links"] += len(links)
-        group = str(node["group"])
-        graph["metadata"]["field_group_counts"][group] = graph["metadata"]["field_group_counts"].get(
-            group, 0) + 1
-        return graph
-
-    def _maybe_refine_embeddings(self, is_initial: bool, links: List[Dict]):
-        if not links:
-            return
+    def _update_graph_structure(self, nodes: List[Dict], links: List[Dict], is_initial: bool = False) -> Dict:
         if is_initial:
+            # Building a new graph from scratch
+            counts = {}
+            for n in nodes:
+                g = str(n["group"])
+                counts[g] = counts.get(g, 0) + 1
+
+            return {
+                "nodes": nodes,
+                "links": links,
+                "metadata": {
+                    "total_nodes": len(nodes),
+                    "total_links": len(links),
+                    "field_groups": self.field_to_group,
+                    "field_group_counts": counts
+                }
+            }
+        else:
+            # Updating existing graph
+            graph = self._load_json(self.graph_data_path)
+            if not graph:
+                return self._update_graph_structure(nodes, links, is_initial=True)
+
+            # Update connection counts for existing nodes
+            for l in links:
+                idx = int(l["target"])
+                if idx < len(graph["nodes"]):
+                    graph["nodes"][idx]["connections"] += 1
+
+            # Add new nodes and links
+            graph["nodes"].extend(nodes)
+            graph["links"].extend(links)
+
+            # Update metadata
+            graph["metadata"]["total_nodes"] += len(nodes)
+            graph["metadata"]["total_links"] += len(links)
+
+            # Update group counts
+            for node in nodes:
+                group = str(node["group"])
+                graph["metadata"]["field_group_counts"][group] = graph["metadata"]["field_group_counts"].get(
+                    group, 0) + 1
+
+            return graph
+
+    def refine_embeddings(self):
+        if gnn_manager.model is None:
             gnn_manager.train_model()
         gnn_manager.refine_embeddings()
 
@@ -193,12 +206,6 @@ class DataManager:
                     links.append(
                         {"source": str(i), "target": str(j), "value": float(sims[j])})
         return links
-
-    def _save_links_to_gnn(self, links: List[Dict]):
-        graph_links = [{"source": l["source"], "target": l["target"]}
-                       for l in links]
-        gnn_manager.graph_links = graph_links
-        gnn_manager._save_json(gnn_manager.graph_path, graph_links)
 
     def _process_directory(self, dir_path: str, field: str,
                            descriptions: List[str], file_data: List[Dict], limit: int = 30):
