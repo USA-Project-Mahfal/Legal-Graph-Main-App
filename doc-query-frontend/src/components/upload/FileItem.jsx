@@ -17,35 +17,43 @@ export default function FileItem({ file, progress, onRemove }) {
 
   return (
     <div className="bg-white border rounded-lg p-4 flex items-center shadow-sm">
-      <div className="text-2xl mr-3">{getFileIcon(file.type)}</div>
-      <div className="flex-grow">
-        <div className="flex justify-between">
-          <div className="font-medium text-gray-800 truncate">{file.name}</div>
-          <div className="text-sm text-gray-500">
-            {formatFileSize(file.size)}
+      <div className="text-2xl mr-3 flex-shrink-0">
+        {getFileIcon(file.type)}
+      </div>
+      <div className="flex-grow w-[calc(100%-2.5rem)]">
+        <div className="flex items-center gap-4">
+          <div className="flex-grow max-w-[calc(100%-2.5rem)]">
+            <div className="flex justify-between items-center">
+              <div className="font-medium text-gray-800 truncate">
+                {file.name}
+              </div>
+              <div className="text-sm text-gray-500">
+                {formatFileSize(file.size)}
+              </div>
+            </div>
+            <div className="mt-2">
+              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 rounded-full"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <div className="mt-1 text-xs text-right text-gray-500">
+                {progress === 100 ? 'Processed' : `${progress}% uploaded`}
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="mt-2">
-          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-600 rounded-full"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <div className="mt-1 text-xs text-right text-gray-500">
-            {progress === 100 ? 'Processed' : `${progress}% uploaded`}
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            className="text-gray-400 hover:text-red-500"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
       </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className="ml-4 text-gray-400 hover:text-red-500"
-      >
-        <X className="h-5 w-5" />
-      </button>
     </div>
   );
 }

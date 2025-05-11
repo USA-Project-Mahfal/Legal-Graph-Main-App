@@ -27,6 +27,13 @@ const GraphView = () => {
     try {
       const response = await fetch('http://localhost:8000/graph');
       if (!response.ok) {
+        // Extract the specific error message from the API response
+        if (response.status === 500) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.message || `HTTP error! Status: ${response.status}`
+          );
+        }
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       return await response.json();
@@ -87,7 +94,7 @@ const GraphView = () => {
         }, 1000);
       } catch (err) {
         console.error('Error initializing graph:', err);
-        setError(err.message);
+        setError(err.message || `HTTP error! Status: ${err.status}`);
         setLoading(false);
       }
     };
@@ -151,9 +158,22 @@ const GraphView = () => {
   if (error) {
     return (
       <div className="h-full w-full flex items-center justify-center bg-gray-900">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-red-400">
-          <p className="font-medium">Error loading graph visualization</p>
-          <p className="text-sm mt-1">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 text-red-400 max-w-md">
+          <p className="font-medium text-lg">
+            Error loading graph visualization
+          </p>
+          <p className="text-sm mt-2">{error}</p>
+
+          {error === 'No embeddings available' && (
+            <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-blue-400 text-sm">
+              <p className="font-medium">To get started:</p>
+              <ol className="list-decimal ml-5 mt-2 space-y-1">
+                <li>Upload document files using the upload function</li>
+                <li>The system will generate embeddings for your documents</li>
+                <li>Return to this view to see the document graph</li>
+              </ol>
+            </div>
+          )}
         </div>
       </div>
     );
