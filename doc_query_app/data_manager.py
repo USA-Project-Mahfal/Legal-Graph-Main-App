@@ -8,6 +8,10 @@ import PyPDF2
 from typing import List, Dict, Tuple, Optional, Any
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from nodes.chunking import optimized_hybrid_chunking
+from nodes.generate_embeddings import generate_optimized_embeddings
+from nodes.load_n_preprocess import load_documents_from_text_folder, load_random_documents
+from nodes.saving_utils import save_dataframe_with_embeddings
 
 from config import (
     DATA_DIR, RAW_FILES_DIR, MODEL_NAME, SIMILARITY_THRESHOLD,
@@ -19,7 +23,13 @@ from GNN import gnn_manager
 class DataManager:
     def __init__(self):
         self.data_dir = DATA_DIR
-        self.raw_files_dir = RAW_FILES_DIR
+        self.base_dir = "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
+        self.raw_files_dir = os.path.join(
+            self.base_dir, "raw_files/chunk_input")
+        self.hybrid_chunks_df_path = os.path.join(
+            self.base_dir, "data/hybrid_chunks_df.pkl")
+        self.full_embeddings_matrix_path = os.path.join(
+            self.base_dir, "data/full_embeddings_matrix.npy")
         self.model = SentenceTransformer(MODEL_NAME)
         self.graph_data_path = os.path.join(self.data_dir, "graph_data.json")
         self.file_data_path = os.path.join(self.data_dir, "file_data.json")
@@ -84,50 +94,58 @@ class DataManager:
         return self._load_json(self.graph_data_path)
 
     def init_embeddings_and_pilot_model(self) -> bool:
-        descriptions, file_data = [], []
-        contract_dir = os.path.join(self.raw_files_dir, 'full_contract_txt')
-        uploads_dir = os.path.join(self.raw_files_dir, 'uploads')
+        # descriptions, file_data = [], []
+        # contract_dir = os.path.join(self.raw_files_dir, 'full_contract_txt')
+        # uploads_dir = os.path.join(self.raw_files_dir, 'uploads')
 
-        self._process_directory(contract_dir, "file", descriptions, file_data)
-        self._process_directory(uploads_dir, "new", descriptions, file_data)
+        # self._process_directory(contract_dir, "file", descriptions, file_data)
+        # self._process_directory(uploads_dir, "new", descriptions, file_data)
 
-        if not descriptions:
-            return False
+        # if not descriptions:
+        #     return False
 
-        try:
-            embeddings = self.model.encode(descriptions)
-            gnn_manager.initialize_with_embeddings(embeddings)
-            links = self._compute_similar_links(embeddings)
+        # try:
+        #     embeddings = self.model.encode(descriptions)
+        #     gnn_manager.initialize_with_embeddings(embeddings)
+        #     links = self._compute_similar_links(embeddings)
 
-            # Save links to GNN
-            graph_links = [{"source": l["source"],
-                            "target": l["target"]} for l in links]
-            gnn_manager.graph_links = graph_links
-            gnn_manager._save_json(gnn_manager.graph_path, graph_links)
+        #     # Save links to GNN
+        #     graph_links = [{"source": l["source"],
+        #                     "target": l["target"]} for l in links]
+        #     gnn_manager.graph_links = graph_links
+        #     gnn_manager._save_json(gnn_manager.graph_path, graph_links)
 
-            # Create nodes
-            nodes = []
-            for i, f in enumerate(file_data):
-                g = self.field_to_group.get(
-                    f["field"], self.field_to_group["file"])
-                nodes.append(self._create_node(
-                    str(i), f["title"], f["description"], g, 0))
+        #     # Create nodes
+        #     nodes = []
+        #     for i, f in enumerate(file_data):
+        #         g = self.field_to_group.get(
+        #             f["field"], self.field_to_group["file"])
+        #         nodes.append(self._create_node(
+        #             str(i), f["title"], f["description"], g, 0))
 
-            # Update connections count
-            for link in links:
-                nodes[int(link["source"])]["connections"] += 1
-                nodes[int(link["target"])]["connections"] += 1
+        #     # Update connections count
+        #     for link in links:
+        #         nodes[int(link["source"])]["connections"] += 1
+        #         nodes[int(link["target"])]["connections"] += 1
 
-            # Build and save graph
-            graph = self._update_graph_structure(nodes, links, is_initial=True)
-            self._save_json(self.graph_data_path, graph)
-            self._save_json(self.file_data_path, file_data)
+        #     # Build and save graph
+        #     graph = self._update_graph_structure(nodes, links, is_initial=True)
+        #     self._save_json(self.graph_data_path, graph)
+        #     self._save_json(self.file_data_path, file_data)
 
-            self.refine_embeddings()
-            return True
-        except Exception as e:
-            print(f"Error during embedding generation: {e}")
-            return False
+        #     self.refine_embeddings()
+        #     return True
+        # except Exception as e:
+        #     print(f"Error during embedding generation: {e}")
+        #     return False
+        docs_df = load_random_documents(self.raw_files_dir, 30)
+        if docs_df is not None and not docs_df.empty:
+            hybrid_chunks_df = optimized_hybrid_chunking(docs_df)
+            save_dataframe_with_embeddings(
+                hybrid_chunks_df, self.hybrid_chunks_df_path)
+        else:
+            print(
+                "docs_df is empty. Please check the document loading and preprocessing steps.")
 
     # ========================
     # === Internal Helpers ===

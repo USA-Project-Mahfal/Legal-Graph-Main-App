@@ -79,14 +79,14 @@ class GNNManager:
         self.model_path = os.path.join(self.model_dir, "gnn_model.pt")
         self.version_path = os.path.join(self.model_dir, "gnn_version.json")
 
-        # Ensure directories exist
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.model_dir, exist_ok=True)
+        # # Ensure directories exist
+        # os.makedirs(self.data_dir, exist_ok=True)
+        # os.makedirs(self.model_dir, exist_ok=True)
 
-        # Load cached data
-        self.embeddings = self._load_npy(self.embeddings_path)
-        self.graph_links = self._load_json(self.graph_path) or []
-        self.input_dim = self.embeddings.shape[1] if self.embeddings is not None else None
+        # # Load cached data
+        # self.embeddings = self._load_npy(self.embeddings_path)
+        # self.graph_links = self._load_json(self.graph_path) or []
+        # self.input_dim = self.embeddings.shape[1] if self.embeddings is not None else None
 
     def _save_json(self, path: str, data: Dict) -> None:
         """Save data as JSON."""
