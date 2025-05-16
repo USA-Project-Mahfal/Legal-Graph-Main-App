@@ -10,7 +10,7 @@ APP_VERSION = "1.0.0"
 # Data settings
 DATA_DIR = "data"
 RAW_FILES_DIR = "raw_files"
-USE_CACHED_DATA = True
+USE_CACHED_DATA = False
 MAX_CHAR_LIMIT = 200
 
 # Embedding model settings

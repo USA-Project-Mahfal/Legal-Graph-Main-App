@@ -29,7 +29,9 @@ class DataManager:
             self.base_dir, "data/hybrid_chunks_df.pkl")
         self.full_embeddings_matrix_path = os.path.join(
             self.base_dir, "data/full_embeddings_matrix.npy")
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")
+
+        self.embedding_model = "all-MiniLM-L6-v2"
+
         self.graph_data_path = os.path.join(self.data_dir, "graph_data.json")
         self.file_data_path = os.path.join(self.data_dir, "file_data.json")
 
@@ -40,9 +42,13 @@ class DataManager:
             '.docx': lambda f: docx.Document(f).paragraphs[0].text if docx.Document(f).paragraphs else "",
             'default': lambda f: f.read()
         }
-        self.init_embeddings_and_pilot_model()
+        self.init_embeddings_and_pilot_model(USE_CACHED_DATA)
 
-    def init_embeddings_and_pilot_model(self) -> bool:
+    def init_embeddings_and_pilot_model(self, use_cached_data: bool) -> bool:
+        if use_cached_data:
+            print("Using cached data. Not generating new embeddings.")
+            return True
+        print("Generating new embeddings.")
         # docs_df = load_random_documents(self.raw_files_dir, 50)
         docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
 
@@ -56,7 +62,7 @@ class DataManager:
 
         # try:
         hybrid_chunks_df_with_embeddings, full_embeddings_matrix, final_model_object = generate_optimized_embeddings(
-            hybrid_chunks_df, self.model)
+            hybrid_chunks_df, self.embedding_model)
         save_embeddings_matrix(full_embeddings_matrix,
                                self.full_embeddings_matrix_path)
 
@@ -65,52 +71,53 @@ class DataManager:
     # =====================
 
     def process_new_file(self, filename: str) -> Dict:
-        file_path = os.path.join(self.raw_files_dir, 'uploads', filename)
-        description = self._get_file_description(file_path)
-        if "Error reading" in description:
-            return {"error": description}
+        return {"error": "Still working on it"}
+        # file_path = os.path.join(self.raw_files_dir, 'uploads', filename)
+        # description = self._get_file_description(file_path)
+        # if "Error reading" in description:
+        #     return {"error": description}
 
-        embedding = self.model.encode([description])[0]
-        gnn_manager.reload()
+        # embedding = self.final_model_object.encode([description])[0]
+        # gnn_manager.reload()
 
-        # Handle first node case or existing graph case
-        if gnn_manager.embeddings is None:
-            # Create first node
-            gnn_manager.add_node(embedding.reshape(1, -1), [])
-            node = self._create_node(
-                "0", filename, description, self.field_to_group["new"], 0)
-            graph = self._update_graph_structure([node], [])
-        else:
-            # Add to existing graph
-            neighbors, sims = self._find_neighbors(
-                embedding, gnn_manager.embeddings)
-            new_node_id = gnn_manager.add_node(
-                embedding.reshape(1, -1), neighbors)
-            new_node = self._create_node(str(new_node_id), filename, description,
-                                         self.field_to_group["new"], len(neighbors))
-            new_links = [
-                {"source": str(new_node_id), "target": str(n),
-                 "value": float(sims[n])}
-                for n in neighbors
-            ]
-            graph = self._update_graph_structure([new_node], new_links)
-            self.refine_embeddings()
+        # # Handle first node case or existing graph case
+        # if gnn_manager.embeddings is None:
+        #     # Create first node
+        #     gnn_manager.add_node(embedding.reshape(1, -1), [])
+        #     node = self._create_node(
+        #         "0", filename, description, self.field_to_group["new"], 0)
+        #     graph = self._update_graph_structure([node], [])
+        # else:
+        #     # Add to existing graph
+        #     neighbors, sims = self._find_neighbors(
+        #         embedding, gnn_manager.embeddings)
+        #     new_node_id = gnn_manager.add_node(
+        #         embedding.reshape(1, -1), neighbors)
+        #     new_node = self._create_node(str(new_node_id), filename, description,
+        #                                  self.field_to_group["new"], len(neighbors))
+        #     new_links = [
+        #         {"source": str(new_node_id), "target": str(n),
+        #          "value": float(sims[n])}
+        #         for n in neighbors
+        #     ]
+        #     graph = self._update_graph_structure([new_node], new_links)
+        #     self.refine_embeddings()
 
-        self._save_json(self.graph_data_path, graph)
-        return graph
+        # self._save_json(self.graph_data_path, graph)
+        # return graph
 
     def get_graph_data(self) -> Dict:
         return {"error": "Still working on it"}
 
-        graph = self._load_json(self.graph_data_path)
-        if graph and USE_CACHED_DATA:
-            return graph
+        # graph = self._load_json(self.graph_data_path)
+        # if graph and USE_CACHED_DATA:
+        #     return graph
 
-        gnn_manager.reload()
-        if gnn_manager.embeddings is None:
-            return {"error": "No embeddings found. Upload documents to build the graph."}
+        # gnn_manager.reload()
+        # if gnn_manager.embeddings is None:
+        #     return {"error": "No embeddings found. Upload documents to build the graph."}
 
-        return self._load_json(self.graph_data_path)
+        # return self._load_json(self.graph_data_path)
 
 
 # Singleton

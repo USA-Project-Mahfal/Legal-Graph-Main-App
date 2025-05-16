@@ -4,7 +4,10 @@ import numpy as np
 from tqdm import tqdm
 
 
-def generate_optimized_embeddings(source_chunks_df, model_name_to_use):
+def generate_optimized_embeddings(source_chunks_df, model_name_to_use=None):
+    if model_name_to_use is None:
+        print("Model name not provided. Using default model: all-MiniLM-L6-v2")
+        model_name_to_use = "all-MiniLM-L6-v2"
     print(f"Loading model: {model_name_to_use}")
     model = SentenceTransformer(model_name_to_use)
 
