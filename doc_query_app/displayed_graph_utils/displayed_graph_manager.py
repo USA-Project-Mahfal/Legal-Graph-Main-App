@@ -3,13 +3,12 @@ from typing import Dict, List, Optional, Tuple, Any
 import json
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
 
 from config import (
     SIMILARITY_THRESHOLD,
     MAX_CHAR_LIMIT, FIELD_TO_GROUP
 )
-from data_manager import data_manager
-from GNN import gnn_manager
 
 
 class Graph_visualizer:
@@ -75,60 +74,6 @@ class Graph_visualizer:
 
             return graph
 
-    def refine_embeddings(self):
-        if gnn_manager.model is None:
-            gnn_manager.train_model()
-        gnn_manager.refine_embeddings()
-
-    def _find_neighbors(self, emb: np.ndarray, ref: np.ndarray) -> Tuple[List[int], np.ndarray]:
-        sims = cosine_similarity([emb], ref)[0]
-        return [i for i, s in enumerate(sims) if s > SIMILARITY_THRESHOLD], sims
-
-    def _compute_similar_links(self, embs: np.ndarray) -> List[Dict]:
-        links = []
-        for i in range(len(embs)):
-            sims = cosine_similarity([embs[i]], embs)[0]
-            for j in range(i + 1, len(embs)):
-                if sims[j] > SIMILARITY_THRESHOLD:
-                    links.append(
-                        {"source": str(i), "target": str(j), "value": float(sims[j])})
-        return links
-
-    def _process_directory(self, dir_path: str, field: str,
-                           descriptions: List[str], file_data: List[Dict], limit: int = 30):
-        if not os.path.exists(dir_path):
-            return
-        count = 0
-        for fname in os.listdir(dir_path):
-            ext = os.path.splitext(fname)[1].lower()
-            if ext not in self.file_handlers and ext != '.txt':
-                continue
-            if count >= limit:
-                break
-            fpath = os.path.join(dir_path, fname)
-            desc = self._get_file_description(fpath)
-            if "Error reading" in desc:
-                continue
-            descriptions.append(desc)
-            file_data.append({
-                "id": len(file_data),
-                "title": fname,
-                "field": field,
-                "description": desc[:MAX_CHAR_LIMIT]
-            })
-            count += 1
-
-    def _get_file_description(self, path: str) -> str:
-        ext = os.path.splitext(path)[1].lower()
-        handler = self.file_handlers.get(ext, self.file_handlers['default'])
-        mode, encoding = ('rb', None) if ext == '.pdf' else ('r', 'utf-8')
-        try:
-            with open(path, mode, encoding=encoding) as f:
-                text = handler(f)
-            return text[:MAX_CHAR_LIMIT]
-        except Exception as e:
-            return f"Error reading {os.path.basename(path)}: {str(e)}"
-
     def _save_json(self, path: str, data: Any):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as f:
@@ -136,6 +81,77 @@ class Graph_visualizer:
 
     def _load_json(self, path: str) -> Optional[Dict]:
         return json.load(open(path)) if os.path.exists(path) else None
+
+    def build_3d_force_graph(self, similarity_df: pd.DataFrame, hybrid_chunks_df: pd.DataFrame) -> Dict:
+        """
+        Build a 3D force graph JSON with nodes and links based on similarity threshold.
+
+        Args:
+            similarity_df: DataFrame with document similarities
+            hybrid_chunks_df: DataFrame containing document chunks and metadata
+
+        Returns:
+            Dict containing nodes and links for 3D force graph
+        """
+        # Get unique documents and their first chunks for descriptions
+        doc_descriptions = {}
+        for doc_id in similarity_df.index:
+            doc_chunks = hybrid_chunks_df[hybrid_chunks_df['doc_id'] == doc_id]
+            if not doc_chunks.empty:
+                # Get the first chunk's text as description
+                # First 100 characters
+                description = doc_chunks.iloc[0]['text'][:MAX_CHAR_LIMIT]
+                category = doc_chunks.iloc[0].get('category', 'unknown')
+                doc_descriptions[doc_id] = {
+                    'description': description,
+                    'category': category
+                }
+
+        # Create nodes
+        nodes = []
+        for doc_id in similarity_df.index:
+            if doc_id in doc_descriptions:
+                node_info = doc_descriptions[doc_id]
+                nodes.append({
+                    "id": str(doc_id),
+                    "name": f"Doc {doc_id}",
+                    "description": node_info['description'],
+                    # Using category as group for coloring
+                    "group": node_info['category'],
+                    "connections": 0  # Will be updated when processing links
+                })
+
+        # Create links based on similarity threshold (0.7 or 70%)
+        links = []
+        for i, doc1_id in enumerate(similarity_df.index):
+            for j, doc2_id in enumerate(similarity_df.columns):
+                if i < j:  # Only process upper triangle to avoid duplicates
+                    similarity = similarity_df.loc[doc1_id, doc2_id]
+                    if similarity >= 0.7:  # 70% similarity threshold
+                        links.append({
+                            "source": str(doc1_id),
+                            "target": str(doc2_id),
+                            "value": float(similarity)
+                        })
+                        # Update connection counts
+                        nodes[i]["connections"] += 1
+                        nodes[j]["connections"] += 1
+
+        # Create the graph structure
+        graph = {
+            "nodes": nodes,
+            "links": links,
+            "metadata": {
+                "total_nodes": len(nodes),
+                "total_links": len(links),
+                "similarity_threshold": 0.7,
+                "categories": list(set(node["group"] for node in nodes))
+            }
+        }
+
+        # Save the graph
+        self._save_json(self.graph_data_path, graph)
+        return graph
 
      # try:
         #     embeddings = self.model.encode(descriptions)

@@ -10,7 +10,8 @@ APP_VERSION = "1.0.0"
 # Data settings
 DATA_DIR = "data"
 RAW_FILES_DIR = "raw_files"
-USE_CACHED_DATA = False
+USE_CACHED_DATA = True
+USE_CACHED_3D_GRAPH = True
 MAX_CHAR_LIMIT = 200
 
 # Embedding model settings
@@ -29,3 +30,6 @@ RETRAIN_GNN = False    # Set to True to force retraining
 
 # Data caching settings
 RETRAIN = True
+
+FIELD_TO_GROUP = {"License_Agreements": 1, "Maintenance": 2,
+                  "Services": 3, "Sponsors": 4, "Strategic_Alliance": 5}
