@@ -58,8 +58,8 @@ class DataManager:
             print("Using cached data. Not generating new embeddings.")
             return True
         print("Generating new embeddings.")
-        # docs_df = load_random_documents(self.raw_files_dir, 50)
-        docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
+        docs_df = load_random_documents(self.raw_files_dir, 100)
+        # docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
 
         if docs_df is not None and not docs_df.empty:
             hybrid_chunks_df = optimized_hybrid_chunking(docs_df)

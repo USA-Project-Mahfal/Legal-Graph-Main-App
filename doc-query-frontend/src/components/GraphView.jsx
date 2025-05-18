@@ -2,18 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import ForceGraph3D from '3d-force-graph';
 import * as THREE from 'three';
 
-// Color mapping for node groups
-const GROUP_COLORS = {
-  5: '#FFD700', // File - Yellow
-  6: '#EF4444', // New - Red
-};
-
-// Field names for groups
-const GROUP_FIELDS = {
-  5: 'File',
-  6: 'New',
-};
-
 const GraphView = () => {
   const containerRef = useRef(null);
   const graphRef = useRef(null);
@@ -21,13 +9,31 @@ const GraphView = () => {
   const [rotating, setRotating] = useState(false);
   const [selectedNode, setSelectedNode] = useState(null);
   const [error, setError] = useState(null);
+  const [fieldColors, setFieldColors] = useState({});
+
+  // Fetch field colors configuration
+  useEffect(() => {
+    const fetchFieldColors = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/group-config');
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const colors = await response.json();
+        setFieldColors(colors);
+      } catch (err) {
+        console.error('Error fetching field colors:', err);
+        setError('Failed to load field colors configuration');
+      }
+    };
+    fetchFieldColors();
+  }, []);
 
   // Fetch graph data
   const fetchGraphData = async () => {
     try {
       const response = await fetch('http://localhost:8000/graph');
       if (!response.ok) {
-        // Extract the specific error message from the API response
         if (response.status === 500) {
           const errorData = await response.json();
           throw new Error(
@@ -54,8 +60,8 @@ const GraphView = () => {
         // Initialize the 3D force graph
         graph = ForceGraph3D({ controlType: 'orbit' })(containerRef.current)
           .backgroundColor('#111827')
-          .nodeColor((node) => GROUP_COLORS[node.group] || '#ffffff')
-          .nodeLabel((node) => node.name)
+          .nodeColor((node) => fieldColors[node.group] || '#808080')
+          .nodeLabel((node) => `${node.name} (${node.group})`)
           .nodeRelSize(6)
           .nodeOpacity(0.9)
           .linkWidth((link) => link.value * 2)
@@ -109,7 +115,7 @@ const GraphView = () => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, []);
+  }, [fieldColors]); // Add fieldColors as dependency
 
   useEffect(() => {
     if (!graphRef.current) return;
@@ -217,15 +223,13 @@ const GraphView = () => {
           </button>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {Object.entries(GROUP_COLORS).map(([group, color]) => (
-            <div key={group} className="flex items-center">
+          {Object.entries(fieldColors).map(([field, color]) => (
+            <div key={field} className="flex items-center">
               <div
                 className="w-3 h-3 mr-2 rounded-full"
                 style={{ backgroundColor: color }}
               />
-              <span className="text-sm text-gray-300">
-                {GROUP_FIELDS[group]}
-              </span>
+              <span className="text-sm text-gray-300">{field}</span>
             </div>
           ))}
         </div>
@@ -239,9 +243,7 @@ const GraphView = () => {
           <h3 className="text-lg font-semibold text-gray-100">
             {selectedNode.name}
           </h3>
-          <p className="text-sm text-gray-400">
-            {GROUP_FIELDS[selectedNode.group]}
-          </p>
+          <p className="text-sm text-gray-400">{selectedNode.group}</p>
           <p className="mt-2 text-sm text-gray-300">
             {selectedNode.description}
           </p>

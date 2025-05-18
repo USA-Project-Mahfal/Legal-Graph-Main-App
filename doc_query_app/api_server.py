@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 import os
 
 from data_manager import data_manager
-from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION, RAW_FILES_DIR
+from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION, RAW_FILES_DIR, FIELD_TO_GROUP, GROUP_COLORS
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -109,6 +109,14 @@ async def get_graph() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=error_message)
 
     return graph_data
+
+
+@app.get("/group-config")
+async def get_group_config():
+    """
+    Returns a simple mapping of field names to their colors for graph visualization.
+    """
+    return GROUP_COLORS
 
 if __name__ == "__main__":
     import uvicorn

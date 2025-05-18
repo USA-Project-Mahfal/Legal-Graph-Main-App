@@ -32,4 +32,13 @@ RETRAIN_GNN = False    # Set to True to force retraining
 RETRAIN = True
 
 FIELD_TO_GROUP = {"License_Agreements": 1, "Maintenance": 2,
-                  "Services": 3, "Sponsors": 4, "Strategic_Alliance": 5}
+                  "Service": 3, "Sponsorship": 4, "Strategic Alliance": 5}
+
+GROUP_COLORS = {
+    "License_Agreements": "#FFD700",
+    "Maintenance": "#EF4444",
+    "Service": "#008000",
+    "Sponsorship": "#0000FF",
+    "Strategic Alliance": "#800080",
+    "unknown": "#808080"
+}
