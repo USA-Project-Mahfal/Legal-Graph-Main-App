@@ -12,10 +12,10 @@ base_dir = "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
 new_raw_files_dir = os.path.join(base_dir, "raw_files/new_chunk_input")
 temp_upload_dir = os.path.join(base_dir, "raw_files/temp_uploads")
 categories = [
-    "License_Agreements",
-    "Maintenance",
-    "Service",
-    "Sponsorship",
+    # "License_Agreements",
+    # "Maintenance",
+    # "Service",
+    # "Sponsorship",
     "Strategic Alliance"
 ]
 

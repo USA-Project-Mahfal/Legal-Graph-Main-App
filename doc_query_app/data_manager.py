@@ -69,9 +69,8 @@ class DataManager:
                 # Continue to generate new embeddings
 
         print("Generating new embeddings.")
-        docs_df = load_random_documents(self.raw_files_dir, 15)
-
-        # docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
+        # docs_df = load_random_documents(self.raw_files_dir, 15)
+        docs_df = load_documents_from_text_folder(self.raw_files_dir)
 
         if docs_df is not None and not docs_df.empty:
             self.hybrid_chunks_df = optimized_hybrid_chunking(docs_df)

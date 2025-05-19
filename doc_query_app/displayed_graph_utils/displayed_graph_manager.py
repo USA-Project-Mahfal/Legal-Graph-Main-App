@@ -70,7 +70,7 @@ class Graph_visualizer:
             for j, doc2_id in enumerate(similarity_df.columns):
                 if i < j:  # Only process upper triangle to avoid duplicates
                     similarity = similarity_df.loc[doc1_id, doc2_id]
-                    if similarity >= 0.7:  # 70% similarity threshold
+                    if similarity >= 0.80:  # 70% similarity threshold
                         links.append({
                             "source": str(doc1_id),
                             "target": str(doc2_id),
