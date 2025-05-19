@@ -50,13 +50,14 @@ class DataManager:
         self.graph_visualizer = Graph_visualizer()
         self.build_3D_graph()
 
-    def init_embeddings_and_pilot_model(self) -> bool:
-        if USE_CACHED_DATA:
+    def init_embeddings_and_pilot_model(self, force: bool = False) -> bool:
+        if USE_CACHED_DATA and not force:  # Only check cached data if not forced
             self.hybrid_chunks_df = pd.read_pickle(self.hybrid_chunks_df_path)
             self.full_embeddings_matrix = np.load(
                 self.full_embeddings_matrix_path)
             print("Using cached data. Not generating new embeddings.")
             return True
+
         print("Generating new embeddings.")
         docs_df = load_random_documents(self.raw_files_dir, 100)
         # docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
@@ -77,10 +78,11 @@ class DataManager:
                                self.full_embeddings_matrix_path)
         self.full_embeddings_matrix = full_embeddings_matrix
 
-    def build_3D_graph(self):
-        if USE_CACHED_3D_GRAPH:
+    def build_3D_graph(self, force: bool = False):
+        if USE_CACHED_3D_GRAPH and not force:  # Only check cached graph if not forced
             print("Using cached 3D graph. Not building new one.")
             return
+
         print("Building 3D graph.")
 
         # Calculate similarity matrices

@@ -152,38 +152,3 @@ class Graph_visualizer:
         # Save the graph
         self._save_json(self.graph_data_path, graph)
         return graph
-
-     # try:
-        #     embeddings = self.model.encode(descriptions)
-        #     gnn_manager.initialize_with_embeddings(embeddings)
-        #     links = self._compute_similar_links(embeddings)
-
-        #     # Save links to GNN
-        #     graph_links = [{"source": l["source"],
-        #                     "target": l["target"]} for l in links]
-        #     gnn_manager.graph_links = graph_links
-        #     gnn_manager._save_json(gnn_manager.graph_path, graph_links)
-
-        #     # Create nodes
-        #     nodes = []
-        #     for i, f in enumerate(file_data):
-        #         g = self.field_to_group.get(
-        #             f["field"], self.field_to_group["file"])
-        #         nodes.append(self._create_node(
-        #             str(i), f["title"], f["description"], g, 0))
-
-        #     # Update connections count
-        #     for link in links:
-        #         nodes[int(link["source"])]["connections"] += 1
-        #         nodes[int(link["target"])]["connections"] += 1
-
-        #     # Build and save graph
-        #     graph = self._update_graph_structure(nodes, links, is_initial=True)
-        #     self._save_json(self.graph_data_path, graph)
-        #     self._save_json(self.file_data_path, file_data)
-
-        #     self.refine_embeddings()
-        #     return True
-        # except Exception as e:
-        #     print(f"Error during embedding generation: {e}")
-        #     return False
