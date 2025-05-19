@@ -55,22 +55,30 @@ class DataManager:
 
     def init_embeddings_and_pilot_model(self, force: bool = False) -> bool:
         if USE_CACHED_DATA and not force:  # Only check cached data if not forced
-            self.hybrid_chunks_df = pd.read_pickle(self.hybrid_chunks_df_path)
-            self.full_embeddings_matrix = np.load(
-                self.full_embeddings_matrix_path)
-            print("Using cached data. Not generating new embeddings.")
-            return True
+            try:
+                self.hybrid_chunks_df = pd.read_pickle(
+                    self.hybrid_chunks_df_path)
+                self.full_embeddings_matrix = np.load(
+                    self.full_embeddings_matrix_path)
+                self.last_doc_id = self.hybrid_chunks_df[
+                    'doc_id'].iloc[-1] if 'doc_id' in self.hybrid_chunks_df.columns else 0
+                print("Using cached data. Not generating new embeddings.")
+                return True
+            except (FileNotFoundError, EOFError):
+                print("Cached data not found or corrupted. Generating new embeddings.")
+                # Continue to generate new embeddings
 
         print("Generating new embeddings.")
-        docs_df = load_random_documents(self.raw_files_dir, 100)
+        docs_df = load_random_documents(self.raw_files_dir, 15)
 
         # docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
 
         if docs_df is not None and not docs_df.empty:
-            self.last_doc_id = docs_df.iloc[-1]['doc_id']
             self.hybrid_chunks_df = optimized_hybrid_chunking(docs_df)
             save_dataframe_with_embeddings(
                 self.hybrid_chunks_df, self.hybrid_chunks_df_path)
+            self.last_doc_id = self.hybrid_chunks_df[
+                'doc_id'].iloc[-1] if 'doc_id' in self.hybrid_chunks_df.columns else 0
 
         else:
             print(
@@ -83,7 +91,8 @@ class DataManager:
                                self.full_embeddings_matrix_path)
 
     def build_3D_graph(self, force: bool = False):
-        if USE_CACHED_3D_GRAPH and not force:  # Only check cached graph if not forced
+        # Only check cached graph if not forced
+        if USE_CACHED_3D_GRAPH and not force and self.graph_visualize_data is not None:
             print("Using cached 3D graph. Not building new one.")
             return
 
@@ -111,87 +120,27 @@ class DataManager:
         )
 
         # Build and save the 3D force graph
-        graph = self.graph_visualizer.build_3d_force_graph(
+        self.graph_visualize_data = self.graph_visualizer.build_3d_force_graph(
             combined_similarity_df,
             self.hybrid_chunks_df
         )
         print(
-            f"Built 3D graph with {graph['metadata']['total_nodes']} nodes and {graph['metadata']['total_links']} links")
+            f"Built 3D graph with {self.graph_visualize_data['metadata']['total_nodes']} nodes and {self.graph_visualize_data['metadata']['total_links']} links")
 
     # =====================
     # === Public Methods ==
     # =====================
-
-    def add_document_to_graph(self, doc_id: str, text: str, category: str = "new") -> Dict:
-        """
-        Add a single document to the graph with minimal computation.
-        Only calculates similarities for the new document.
-        """
-        print(f"Adding document {doc_id} to graph...")
-
-        # Create a temporary DataFrame for the new document
-        new_doc_df = pd.DataFrame({
-            'doc_id': [doc_id],
-            'text': [text],
-            'category': [category]
-        })
-
-        # Generate chunks for the new document
-        new_chunks_df = optimized_hybrid_chunking(new_doc_df)
-
-        # Generate embeddings for the new chunks
-        _, new_embeddings, _ = generate_optimized_embeddings(
-            new_chunks_df, self.embedding_model
-        )
-
-        # Calculate similarities only between new document and existing documents
-        similarities = {}
-        if self.hybrid_chunks_df is not None and self.full_embeddings_matrix is not None:
-            # Calculate max similarity
-            sim_max = cosine_similarity(
-                new_embeddings,
-                self.full_embeddings_matrix
-            ).max(axis=0)  # Take max similarity across chunks
-
-            # Calculate mean similarity
-            sim_mean = cosine_similarity(
-                new_embeddings,
-                self.full_embeddings_matrix
-            ).mean(axis=0)  # Take mean similarity across chunks
-
-            # Combine similarities
-            combined_similarities = np.maximum(sim_max, sim_mean)
-
-            # Create similarity dictionary
-            for idx, sim_score in enumerate(combined_similarities):
-                target_doc_id = self.hybrid_chunks_df.iloc[idx]['doc_id']
-                similarities[str(target_doc_id)] = float(sim_score)
-
-        # Add node to graph
-        graph = self.graph_visualizer.add_node_to_graph(
-            doc_id=doc_id,
-            description=text,
-            category=category,
-            similarities=similarities
-        )
-
-        # Update our dataframes with the new document
-        self.hybrid_chunks_df = pd.concat(
-            [self.hybrid_chunks_df, new_chunks_df])
-        self.full_embeddings_matrix = np.vstack(
-            [self.full_embeddings_matrix, new_embeddings])
-
-        return graph
-
     def get_graph_data(self) -> Dict:
         if self.graph_visualize_data:
             return self.graph_visualize_data
         else:
-            self.graph_visualize_data = json.load(open(self.graph_data_path))
-            if self.graph_visualize_data:
-                return self.graph_visualize_data
-            else:
-                return {"error": "No graph data found. Please upload documents to build the graph."}
+            try:
+                self.graph_visualize_data = json.load(
+                    open(self.graph_data_path))
+                if self.graph_visualize_data:
+                    return self.graph_visualize_data
+            except Exception as e:
+                return {"error": f"Error loading graph data: {e}"}
 
     def get_last_doc_id(self) -> str:
         return self.last_doc_id
