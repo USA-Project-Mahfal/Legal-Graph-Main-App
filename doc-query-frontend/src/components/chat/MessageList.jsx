@@ -5,6 +5,7 @@ export default function MessageList({
   isLoading,
   messagesEndRef,
   isDarkMode,
+  onViewDocument,
 }) {
   // Function to format message timestamp
   const getFormattedTime = () => {
@@ -151,6 +152,19 @@ export default function MessageList({
                     message.role === "user" ? "border-l-[7px]" : "border-l-0"
                   } border-r-0`}
                 ></div>
+              )}
+
+              {/* Add document view button if there's a highlighted document */}
+              {message.highlighted_document && (
+                <button
+                  onClick={() => onViewDocument(message.highlighted_document)}
+                  className={`mt-2 flex items-center space-x-1 text-sm ${
+                    isDarkMode ? 'text-blue-300' : 'text-blue-600'
+                  } hover:underline`}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>View Document</span>
+                </button>
               )}
             </div>
           </div>
