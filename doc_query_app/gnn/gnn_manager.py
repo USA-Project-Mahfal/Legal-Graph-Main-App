@@ -117,7 +117,10 @@ class GNNManager:
             )
 
         print("Data prepared for GAE training (edges split):")
-        print(self.data_for_gae)
+        # Print all attributes except node_id_mapping
+        data_attrs = {k: v for k, v in self.data_for_gae.items()
+                      if k != 'node_id_mapping'}
+        print(data_attrs)
 
     def _train_epoch(self):
         self.model.train()
@@ -139,8 +142,10 @@ class GNNManager:
 
         z = self.model.encode(
             self.data_for_gae.x,
-            self.data_for_gae.train_pos_edge_index,  # Edges for message passing during encoding
-            self.data_for_gae.edge_type,  # Full edge types; RGCNConv handles selection based on edge_index
+            # Edges for message passing during encoding
+            self.data_for_gae.train_pos_edge_index,
+            # Full edge types; RGCNConv handles selection based on edge_index
+            self.data_for_gae.edge_type,
         )
 
         loss = self.model.recon_loss(z, self.data_for_gae.train_pos_edge_index)
@@ -167,7 +172,8 @@ class GNNManager:
         # This is a common practice: learn embeddings on training graph, then test link prediction.
         z = self.model.encode(
             self.data_for_gae.x,
-            self.data_for_gae.train_pos_edge_index,  # Use training graph structure for encoding
+            # Use training graph structure for encoding
+            self.data_for_gae.train_pos_edge_index,
             self.data_for_gae.edge_type,  # Full edge types
         )
         return self.model.test(z, pos_edge_index, neg_edge_index)
@@ -177,7 +183,8 @@ class GNNManager:
     ):
         if pyg_data.num_nodes == 0:
             print("Skipping GNN training as there are no nodes in the graph.")
-            return None, (0.0, 0.0), None  # history, test_scores, final_embeddings
+            # history, test_scores, final_embeddings
+            return None, (0.0, 0.0), None
 
         self._prepare_data_for_gae(pyg_data, val_ratio, test_ratio)
 
@@ -254,7 +261,8 @@ class GNNManager:
             plt.subplot(1, 2, 2)
             plt.plot(epochs_range, history["val_auc"], label="Validation AUC")
             if history["val_ap"]:
-                plt.plot(epochs_range, history["val_ap"], label="Validation AP")
+                plt.plot(epochs_range,
+                         history["val_ap"], label="Validation AP")
             plt.title("Validation Metrics")
             plt.xlabel("Epoch")
             plt.ylabel("Score")
@@ -276,7 +284,8 @@ class GNNManager:
             path = self.trained_model_path
         if os.path.exists(path):
             try:
-                self.model.load_state_dict(torch.load(path, map_location=self.device))
+                self.model.load_state_dict(
+                    torch.load(path, map_location=self.device))
                 self.model.to(self.device)
                 self.model.eval()
                 print(f"GNN Model loaded from '{path}'")
