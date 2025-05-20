@@ -11,7 +11,18 @@ export default function DocumentViewer({ document, onClose, isDarkMode }) {
       ? document.highlight_text_content 
       : [document.highlight_text_content];
     
-    return highlights.some(text => paragraph.includes(text));
+    // Normalize both the paragraph and highlights by removing extra whitespace
+    const normalizedParagraph = paragraph.trim().replace(/\s+/g, ' ');
+    
+    return highlights.some(highlight => {
+      // Normalize the highlight text by removing extra whitespace
+      const normalizedHighlight = highlight.trim().replace(/\s+/g, ' ');
+      // Split the highlight into sentences/phrases for better matching
+      const highlightParts = normalizedHighlight.split(/[.!?]/).filter(part => part.trim().length > 0);
+      
+      // Check if any part of the highlight matches the paragraph
+      return highlightParts.some(part => normalizedParagraph.includes(part.trim()));
+    });
   };
 
   return (

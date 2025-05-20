@@ -59,7 +59,6 @@ def chat_with_llm(user_message: str, category: str):
         Response:"""
 
         final_response = chat_gemini(final_prompt)
-        print(f"Respond message: {final_response}")
 
         gemini_model = initialize_gemini()        
         conversation_summary = summarize_conversation(user_message, final_response, gemini_model)
@@ -71,6 +70,8 @@ def chat_with_llm(user_message: str, category: str):
 
         #get highlighted document
         highlighted_document = get_document(docs)
+
+        print(f"Highlighted contexts: {highlighted_document['highlight_text_content']}")
 
         return final_response, highlighted_document
         
