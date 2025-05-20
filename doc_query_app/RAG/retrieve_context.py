@@ -17,7 +17,7 @@ def retrieve_documents(query: str, category: str):
     retriever = vectorstore.as_retriever()
 
     # Get results with or without category filter
-    if category.lower() == "skip":
+    if category.lower() == "default":
         results = retriever.invoke(query)
     else:
         results = retriever.invoke(
