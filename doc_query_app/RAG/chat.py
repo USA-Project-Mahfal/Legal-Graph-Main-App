@@ -3,7 +3,7 @@ from summarize import summarize_conversation
 from retrieve_context import retrieve_documents
 from chat_gemini import chat_gemini
 from gemini import initialize_gemini
-from highlight.main import get_document
+from pick_content.main import get_document
 
 memory = ConversationBufferMemory(return_messages=True)
 
