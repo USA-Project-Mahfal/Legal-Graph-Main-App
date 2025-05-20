@@ -4,9 +4,17 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any
 import os
-
+from nodes.load_n_preprocess import (
+    mock_detect_category,
+    process_n_add_new_document,
+    save_uploaded_file_temp,
+    cleanup_temp_file,
+)
+from nodes.generate_embeddings import generate_optimized_embeddings
+from nodes.chunking import optimized_hybrid_chunking
 from data_manager import data_manager
-from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION, RAW_FILES_DIR, FIELD_TO_GROUP, GROUP_COLORS
+from config import HOST, PORT, APP_TITLE, APP_DESCRIPTION, APP_VERSION, FIELD_TO_GROUP, GROUP_COLORS
+import pandas as pd
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -24,10 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ensure upload directory exists
-UPLOAD_DIR = os.path.join(RAW_FILES_DIR, "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 @app.post("/upload-multiple")
 async def upload_multiple_docs(files: List[UploadFile] = File(...)) -> Dict[str, Any]:
@@ -44,43 +48,61 @@ async def upload_multiple_docs(files: List[UploadFile] = File(...)) -> Dict[str,
 
     results = []
     graph_data = None
+    temp_file_path = None
 
     for file in files:
-        # Clean filename
-        safe_filename = file.filename.replace(" ", "_")
-        file_path = os.path.join(UPLOAD_DIR, safe_filename)
-
         try:
-            # Save file to disk
+            # Save file to temporary location
             contents = await file.read()
-            with open(file_path, "wb") as f:
-                f.write(contents)
+            temp_file_path = await save_uploaded_file_temp(contents, file.filename)
 
-            # Process file using data manager
-            graph_data = data_manager.process_new_file(safe_filename)
+            # Get file content for category detection
+            with open(temp_file_path, 'rb') as f:
+                # Read first 10KB for category detection
+                sample_content = f.read(10000)
 
-            # Check for errors
-            if isinstance(graph_data, dict) and "error" in graph_data:
-                print("Error:", graph_data["error"])
+            # Detect category from content
+            detected_category = mock_detect_category(sample_content)
+            print(
+                f"Detected category for {file.filename}: {detected_category}")
+
+            # Process the document
+            doc_data = process_n_add_new_document(
+                temp_file_path, file.filename, detected_category, data_manager.get_last_doc_id())
+
+            if doc_data is None:
                 results.append({
-                    "filename": safe_filename,
+                    "filename": file.filename,
                     "status": "error",
-                    "message": graph_data["error"]
+                    "message": "Failed to process document"
                 })
-            else:
-                results.append({
-                    "filename": safe_filename,
-                    "status": "success",
-                    "message": f"File '{safe_filename}' uploaded and processed."
-                })
+                continue
+
+            new_chunks_df = optimized_hybrid_chunking(pd.DataFrame([doc_data]))
+            _, new_embeddings, _ = generate_optimized_embeddings(
+                new_chunks_df, data_manager.embedding_model
+            )
+            data_manager.update_chunks_df(new_chunks_df)
+            data_manager.update_embeddings_matrix(new_embeddings)
+            data_manager.build_3D_graph(force=True)
+
+            results.append({
+                "filename": file.filename,
+                "status": "success",
+                "message": f"File processed and categorized as '{detected_category}'"
+            })
 
         except Exception as e:
-            print("Error:", str(e))
+            print(f"Error processing {file.filename}: {e}")
             results.append({
-                "filename": safe_filename,
+                "filename": file.filename,
                 "status": "error",
                 "message": f"Error: {str(e)}"
             })
+        finally:
+            # Clean up temporary file
+            if temp_file_path:
+                cleanup_temp_file(temp_file_path)
 
     # Return results
     return {

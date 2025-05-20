@@ -13,6 +13,7 @@ from nodes.load_n_preprocess import load_documents_from_text_folder, load_random
 from nodes.saving_utils import save_dataframe_with_embeddings, save_embeddings_matrix
 from nodes.similarity_check import calculate_document_similarity_by_max, analyze_similarity_distribution, calculate_document_similarity_by_mean
 from displayed_graph_utils.displayed_graph_manager import Graph_visualizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from config import (
     DATA_DIR, USE_CACHED_DATA, USE_CACHED_3D_GRAPH
@@ -37,9 +38,11 @@ class DataManager:
         self.file_data_path = os.path.join(self.data_dir, "file_data.json")
 
         self.field_to_group = {"file": 5, "new": 6}
+        self.last_doc_id = None
 
         self.hybrid_chunks_df = None
         self.full_embeddings_matrix = None
+        self.graph_visualize_data = None
 
         self.file_handlers = {
             '.pdf': lambda f: PyPDF2.PdfReader(f).pages[0].extract_text(),
@@ -52,34 +55,43 @@ class DataManager:
 
     def init_embeddings_and_pilot_model(self, force: bool = False) -> bool:
         if USE_CACHED_DATA and not force:  # Only check cached data if not forced
-            self.hybrid_chunks_df = pd.read_pickle(self.hybrid_chunks_df_path)
-            self.full_embeddings_matrix = np.load(
-                self.full_embeddings_matrix_path)
-            print("Using cached data. Not generating new embeddings.")
-            return True
+            try:
+                self.hybrid_chunks_df = pd.read_pickle(
+                    self.hybrid_chunks_df_path)
+                self.full_embeddings_matrix = np.load(
+                    self.full_embeddings_matrix_path)
+                self.last_doc_id = self.hybrid_chunks_df[
+                    'doc_id'].iloc[-1] if 'doc_id' in self.hybrid_chunks_df.columns else 0
+                print("Using cached data. Not generating new embeddings.")
+                return True
+            except (FileNotFoundError, EOFError):
+                print("Cached data not found or corrupted. Generating new embeddings.")
+                # Continue to generate new embeddings
 
         print("Generating new embeddings.")
-        docs_df = load_random_documents(self.raw_files_dir, 100)
-        # docs_df = load_documents_from_text_folder(self.raw_files_dir, 50)
+        # docs_df = load_random_documents(self.raw_files_dir, 15)
+        docs_df = load_documents_from_text_folder(self.raw_files_dir)
 
         if docs_df is not None and not docs_df.empty:
-            hybrid_chunks_df = optimized_hybrid_chunking(docs_df)
+            self.hybrid_chunks_df = optimized_hybrid_chunking(docs_df)
             save_dataframe_with_embeddings(
-                hybrid_chunks_df, self.hybrid_chunks_df_path)
-            self.hybrid_chunks_df = hybrid_chunks_df
+                self.hybrid_chunks_df, self.hybrid_chunks_df_path)
+            self.last_doc_id = self.hybrid_chunks_df[
+                'doc_id'].iloc[-1] if 'doc_id' in self.hybrid_chunks_df.columns else 0
+
         else:
             print(
                 "docs_df is empty. Please check the document loading and preprocessing steps.")
 
         # try:
-        hybrid_chunks_df_with_embeddings, full_embeddings_matrix, final_model_object = generate_optimized_embeddings(
-            hybrid_chunks_df, self.embedding_model)
-        save_embeddings_matrix(full_embeddings_matrix,
+        self.hybrid_chunks_df_with_embeddings, self.full_embeddings_matrix, self.final_model_object = generate_optimized_embeddings(
+            self.hybrid_chunks_df, self.embedding_model)
+        save_embeddings_matrix(self.full_embeddings_matrix,
                                self.full_embeddings_matrix_path)
-        self.full_embeddings_matrix = full_embeddings_matrix
 
     def build_3D_graph(self, force: bool = False):
-        if USE_CACHED_3D_GRAPH and not force:  # Only check cached graph if not forced
+        # Only check cached graph if not forced
+        if USE_CACHED_3D_GRAPH and not force and self.graph_visualize_data is not None:
             print("Using cached 3D graph. Not building new one.")
             return
 
@@ -107,65 +119,38 @@ class DataManager:
         )
 
         # Build and save the 3D force graph
-        graph = self.graph_visualizer.build_3d_force_graph(
+        self.graph_visualize_data = self.graph_visualizer.build_3d_force_graph(
             combined_similarity_df,
             self.hybrid_chunks_df
         )
         print(
-            f"Built 3D graph with {graph['metadata']['total_nodes']} nodes and {graph['metadata']['total_links']} links")
+            f"Built 3D graph with {self.graph_visualize_data['metadata']['total_nodes']} nodes and {self.graph_visualize_data['metadata']['total_links']} links")
 
     # =====================
     # === Public Methods ==
     # =====================
-
-    def process_new_file(self, filename: str) -> Dict:
-        return {"error": "Still working on it"}
-        # file_path = os.path.join(self.raw_files_dir, 'uploads', filename)
-        # description = self._get_file_description(file_path)
-        # if "Error reading" in description:
-        #     return {"error": description}
-
-        # embedding = self.final_model_object.encode([description])[0]
-        # gnn_manager.reload()
-
-        # # Handle first node case or existing graph case
-        # if gnn_manager.embeddings is None:
-        #     # Create first node
-        #     gnn_manager.add_node(embedding.reshape(1, -1), [])
-        #     node = self._create_node(
-        #         "0", filename, description, self.field_to_group["new"], 0)
-        #     graph = self._update_graph_structure([node], [])
-        # else:
-        #     # Add to existing graph
-        #     neighbors, sims = self._find_neighbors(
-        #         embedding, gnn_manager.embeddings)
-        #     new_node_id = gnn_manager.add_node(
-        #         embedding.reshape(1, -1), neighbors)
-        #     new_node = self._create_node(str(new_node_id), filename, description,
-        #                                  self.field_to_group["new"], len(neighbors))
-        #     new_links = [
-        #         {"source": str(new_node_id), "target": str(n),
-        #          "value": float(sims[n])}
-        #         for n in neighbors
-        #     ]
-        #     graph = self._update_graph_structure([new_node], new_links)
-        #     self.refine_embeddings()
-
-        # self._save_json(self.graph_data_path, graph)
-        # return graph
-
     def get_graph_data(self) -> Dict:
-        graph = json.load(open(self.graph_data_path))
-        if graph:
-            return graph
+        if self.graph_visualize_data:
+            return self.graph_visualize_data
         else:
-            return {"error": "No graph data found. Please upload documents to build the graph."}
+            try:
+                self.graph_visualize_data = json.load(
+                    open(self.graph_data_path))
+                if self.graph_visualize_data:
+                    return self.graph_visualize_data
+            except Exception as e:
+                return {"error": f"Error loading graph data: {e}"}
 
-        # gnn_manager.reload()
-        # if gnn_manager.embeddings is None:
-        #     return {"error": "No embeddings found. Upload documents to build the graph."}
+    def get_last_doc_id(self) -> str:
+        return self.last_doc_id
 
-        # return json.load(open(self.graph_data_path))
+    def update_chunks_df(self, new_chunks_df: pd.DataFrame):
+        self.hybrid_chunks_df = pd.concat(
+            [self.hybrid_chunks_df, new_chunks_df])
+
+    def update_embeddings_matrix(self, new_embeddings: np.ndarray):
+        self.full_embeddings_matrix = np.vstack(
+            [self.full_embeddings_matrix, new_embeddings])
 
 
 # Singleton

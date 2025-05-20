@@ -16,63 +16,6 @@ class Graph_visualizer:
         self.base_dir = "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
         self.graph_data_path = os.path.join(
             self.base_dir, "data/graph_data.json")
-        self.file_data_path = os.path.join(
-            self.base_dir, "data/file_data.json")
-
-    def _create_node(self, node_id: str, name: str, desc: str, group: int, conn: int) -> Dict:
-        return {
-            "id": node_id,
-            "name": name,
-            "description": desc,
-            "group": group,
-            "connections": conn
-        }
-
-    def _update_graph_structure(self, nodes: List[Dict], links: List[Dict], is_initial: bool = False) -> Dict:
-        if is_initial:
-            # Building a new graph from scratch
-            counts = {}
-            for n in nodes:
-                g = str(n["group"])
-                counts[g] = counts.get(g, 0) + 1
-
-            return {
-                "nodes": nodes,
-                "links": links,
-                "metadata": {
-                    "total_nodes": len(nodes),
-                    "total_links": len(links),
-                    "field_groups": self.field_to_group,
-                    "field_group_counts": counts
-                }
-            }
-        else:
-            # Updating existing graph
-            graph = self._load_json(self.graph_data_path)
-            if not graph:
-                return self._update_graph_structure(nodes, links, is_initial=True)
-
-            # Update connection counts for existing nodes
-            for l in links:
-                idx = int(l["target"])
-                if idx < len(graph["nodes"]):
-                    graph["nodes"][idx]["connections"] += 1
-
-            # Add new nodes and links
-            graph["nodes"].extend(nodes)
-            graph["links"].extend(links)
-
-            # Update metadata
-            graph["metadata"]["total_nodes"] += len(nodes)
-            graph["metadata"]["total_links"] += len(links)
-
-            # Update group counts
-            for node in nodes:
-                group = str(node["group"])
-                graph["metadata"]["field_group_counts"][group] = graph["metadata"]["field_group_counts"].get(
-                    group, 0) + 1
-
-            return graph
 
     def _save_json(self, path: str, data: Any):
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -127,7 +70,7 @@ class Graph_visualizer:
             for j, doc2_id in enumerate(similarity_df.columns):
                 if i < j:  # Only process upper triangle to avoid duplicates
                     similarity = similarity_df.loc[doc1_id, doc2_id]
-                    if similarity >= 0.7:  # 70% similarity threshold
+                    if similarity >= 0.80:  # 70% similarity threshold
                         links.append({
                             "source": str(doc1_id),
                             "target": str(doc2_id),

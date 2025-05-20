@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import torch
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 
 
 def generate_optimized_embeddings(source_chunks_df, model_name_to_use=None):
@@ -53,3 +54,49 @@ def generate_optimized_embeddings(source_chunks_df, model_name_to_use=None):
 
     print(f"Generated embeddings with shape: {all_embeddings.shape}")
     return output_chunks_df, all_embeddings, model
+
+
+def update_embedding_matrix(self, new_doc_df: pd.DataFrame, current_embeddings) -> np.ndarray:
+    """
+    Update the embedding matrix with new document embeddings.
+
+    Args:
+        new_doc_df (pd.DataFrame): DataFrame containing new document chunks
+        current_embeddings (np.ndarray): Current embeddings matrix
+
+    Returns:
+        np.ndarray: Updated embeddings matrix
+    """
+    try:
+        # Generate embeddings for new document chunks
+        new_embeddings, _ = generate_embeddings(
+            new_doc_df['text'].tolist(),
+            self.embedding_model
+        )
+
+        # Convert to numpy array if not already
+        new_embeddings = np.array(new_embeddings)
+
+        # Update the full embeddings matrix
+        if current_embeddings is None:
+            updated_embeddings = new_embeddings
+        else:
+            updated_embeddings = np.vstack([
+                current_embeddings,
+                new_embeddings
+            ])
+
+        # Save updated embeddings matrix
+        save_embeddings_matrix(
+            updated_embeddings,
+            self.full_embeddings_matrix_path
+        )
+
+        print(
+            f"Successfully updated embeddings matrix with {len(new_embeddings)} new embeddings")
+
+        return updated_embeddings
+
+    except Exception as e:
+        print(f"Error updating embedding matrix: {e}")
+        raise
