@@ -570,13 +570,6 @@ class DataManager:
 # Example of how to run if this script is executed directly (for testing)
 if __name__ == "__main__":
     print("Initializing DataManager...")
-    # Ensure config.py paths are correct and raw_files/chunk_input has some text files
-    # Create dummy files in raw_files/chunk_input for testing if needed
-    # os.makedirs("d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app/raw_files/chunk_input", exist_ok=True)
-    # with open("d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app/raw_files/chunk_input/test1.txt", "w") as f:
-    #     f.write("This is a test document about machine learning.")
-    # with open("d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app/raw_files/chunk_input/test2.txt", "w") as f:
-    #     f.write("Another test document focusing on graph neural networks.")
 
     data_manager_instance = DataManager()
     print("\nDataManager Initialization Complete.")
