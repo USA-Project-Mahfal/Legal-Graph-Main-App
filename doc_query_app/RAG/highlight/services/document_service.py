@@ -1,6 +1,5 @@
 # app/services/document_service.py
 import os
-from ..utils.text_highlighter import highlight_text
 
 class DocumentService:
     def __init__(self, base_path):
@@ -72,9 +71,7 @@ class DocumentService:
                 "status": "error",
                 "message": f"Document not found: {category}/{doc_name}"
             }
-            
-        # highlighted_content = highlight_text(content, highlight_text_content)
-        
+                    
         return {
             "category": category,
             "doc_name": doc_name,
