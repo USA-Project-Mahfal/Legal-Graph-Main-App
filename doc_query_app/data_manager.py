@@ -23,7 +23,7 @@ from nodes.similarity_check import (
 from displayed_graph_utils.displayed_graph_manager import (
     Graph_visualizer,
 )  # Assuming this class is defined
-from GNN.gnn_manager import GNNManager  # Corrected import
+from gnn.gnn_manager import GNNManager  # Corrected import
 
 from nodes.graph_builder import build_document_graph
 from nodes.pyg_converter import networkx_to_pyg_data
@@ -44,7 +44,8 @@ class DataManager:
         self.base_dir = (
             "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
         )
-        self.raw_files_dir = os.path.join(self.base_dir, "raw_files/chunk_input")
+        self.raw_files_dir = os.path.join(
+            self.base_dir, "raw_files/chunk_input")
         self.hybrid_chunks_df_path = os.path.join(
             self.base_dir, "data/hybrid_chunks_df.pkl"
         )
@@ -104,7 +105,8 @@ class DataManager:
     def init_embeddings_and_pilot_model(self, force: bool = False) -> bool:
         if USE_CACHED_DATA and not force:
             try:
-                self.hybrid_chunks_df = pd.read_pickle(self.hybrid_chunks_df_path)
+                self.hybrid_chunks_df = pd.read_pickle(
+                    self.hybrid_chunks_df_path)
                 if os.path.exists(self.full_embeddings_matrix_path):
                     self.full_embeddings_matrix = np.load(
                         self.full_embeddings_matrix_path
@@ -191,22 +193,18 @@ class DataManager:
         if (
             USE_CACHED_3D_GRAPH
             and not force
-            and self.graph_visualize_data is not None
             and os.path.exists(self.graph_data_path)
-        ):  # Check if file exists too
+        ):  # Check if file exists
             print("Using cached 3D graph data.")
-            # Optionally load from self.graph_data_path if self.graph_visualize_data is None but file exists
-            if self.graph_visualize_data is None:
-                try:
-                    with open(self.graph_data_path, "r") as f:
-                        self.graph_visualize_data = json.load(f)
-                    print("Loaded 3D graph data from file.")
-                except Exception as e:
-                    print(
-                        f"Could not load cached 3D graph data from file: {e}. Will rebuild."
-                    )
-            else:  # Data already in memory
+            try:
+                with open(self.graph_data_path, "r") as f:
+                    self.graph_visualize_data = json.load(f)
+                print("Loaded 3D graph data from file.")
                 return
+            except Exception as e:
+                print(
+                    f"Could not load cached 3D graph data from file: {e}. Will rebuild."
+                )
 
         if (
             self.hybrid_chunks_df is None
@@ -251,7 +249,8 @@ class DataManager:
                 print(
                     f"Built 3D graph with {self.graph_visualize_data['metadata']['total_nodes']} nodes and {self.graph_visualize_data['metadata']['total_links']} links"
                 )
-                os.makedirs(os.path.dirname(self.graph_data_path), exist_ok=True)
+                os.makedirs(os.path.dirname(
+                    self.graph_data_path), exist_ok=True)
                 with open(self.graph_data_path, "w") as f:
                     json.dump(self.graph_visualize_data, f)
         except Exception as e:
@@ -281,7 +280,8 @@ class DataManager:
 
         print("Building structural and semantic NetworkX document graph...")
         self.document_nx_graph = build_document_graph(
-            hybrid_chunks_df=self.hybrid_chunks_df,  # This df must have features/embeddings
+            # This df must have features/embeddings
+            hybrid_chunks_df=self.hybrid_chunks_df,
             # Pass full_embeddings_matrix if build_document_graph expects it separately
             # full_embeddings_matrix=self.full_embeddings_matrix,
             similarity_threshold=0.6,  # Example threshold
@@ -319,7 +319,8 @@ class DataManager:
         print("Converting NetworkX graph to PyG Data object...")
         self.pyg_graph_data = networkx_to_pyg_data(
             G=self.document_nx_graph,
-            hybrid_chunks_df=self.hybrid_chunks_df,  # Pass df for node features and other attributes
+            # Pass df for node features and other attributes
+            hybrid_chunks_df=self.hybrid_chunks_df,
             # Pass full_embeddings_matrix if pyg_converter needs it:
             # full_embeddings_matrix=self.full_embeddings_matrix
         )
@@ -422,7 +423,8 @@ class DataManager:
                         "PyG data has 0 edges. GAE training for link prediction will be skipped or ineffective."
                     )
 
-                print(f"Starting GNN training pipeline for {train_epochs} epochs...")
+                print(
+                    f"Starting GNN training pipeline for {train_epochs} epochs...")
                 # Ensure train_pipeline in GNNManager can handle data with 0 edges if that's a valid scenario for your model type
                 history, test_scores, embeddings = (
                     self.gnn_manager_instance.train_pipeline(
@@ -492,7 +494,8 @@ class DataManager:
                 return self.graph_visualize_data
             except Exception as e:
                 print(f"Error loading 3D graph data from file: {e}")
-                return {"error": f"Error loading graph data: {e}"}  # Return error dict
+                # Return error dict
+                return {"error": f"Error loading graph data: {e}"}
         print("3D graph visualization data not available.")
         return None
 
@@ -542,19 +545,22 @@ class DataManager:
                     print("Loaded GNN embeddings successfully via GNNManager.")
                     return self.final_gnn_embeddings
                 else:  # Fallback to direct load if GNNManager method fails or doesn't exist
-                    self.final_gnn_embeddings = np.load(self.gnn_embeddings_path)
+                    self.final_gnn_embeddings = np.load(
+                        self.gnn_embeddings_path)
                     print("Loaded GNN embeddings directly from file.")
                     return self.final_gnn_embeddings
 
             except AttributeError:  # If GNNManager has no load_embeddings()
                 try:
-                    self.final_gnn_embeddings = np.load(self.gnn_embeddings_path)
+                    self.final_gnn_embeddings = np.load(
+                        self.gnn_embeddings_path)
                     print(
                         "Loaded GNN embeddings directly from file (GNNManager.load_embeddings not found)."
                     )
                     return self.final_gnn_embeddings
                 except Exception as e:
-                    print(f"Error loading GNN embeddings directly from file: {e}")
+                    print(
+                        f"Error loading GNN embeddings directly from file: {e}")
             except Exception as e:
                 print(f"Error loading GNN embeddings: {e}")
 
@@ -565,45 +571,47 @@ class DataManager:
 # Singleton instance
 # Ensure all dependencies (like config.py, nodes/*, GNN/*) are correctly set up
 # before instantiating.
-# data_manager = DataManager() # Comment out if you instantiate it elsewhere (e.g., in app.py)
+# Comment out if you instantiate it elsewhere (e.g., in app.py)
+data_manager = DataManager()
 
-# Example of how to run if this script is executed directly (for testing)
-if __name__ == "__main__":
-    print("Initializing DataManager...")
+# # Example of how to run if this script is executed directly (for testing)
+# if __name__ == "__main__":
+#     print("Initializing DataManager...")
 
-    data_manager_instance = DataManager()
-    print("\nDataManager Initialization Complete.")
-    print(f"Last Doc ID: {data_manager_instance.get_last_doc_id()}")
+#     data_manager_instance = DataManager()
+#     print("\nDataManager Initialization Complete.")
+#     print(f"Last Doc ID: {data_manager_instance.get_last_doc_id()}")
 
-    if data_manager_instance.hybrid_chunks_df is not None:
-        print(f"Hybrid Chunks DF shape: {data_manager_instance.hybrid_chunks_df.shape}")
-    if data_manager_instance.full_embeddings_matrix is not None:
-        print(
-            f"Full Embeddings Matrix shape: {data_manager_instance.full_embeddings_matrix.shape}"
-        )
+#     if data_manager_instance.hybrid_chunks_df is not None:
+#         print(
+#             f"Hybrid Chunks DF shape: {data_manager_instance.hybrid_chunks_df.shape}")
+#     if data_manager_instance.full_embeddings_matrix is not None:
+#         print(
+#             f"Full Embeddings Matrix shape: {data_manager_instance.full_embeddings_matrix.shape}"
+#         )
 
-    nx_graph = data_manager_instance.get_document_networkx_graph()
-    if nx_graph:
-        print(
-            f"NetworkX Graph: {nx_graph.number_of_nodes()} nodes, {nx_graph.number_of_edges()} edges"
-        )
+#     nx_graph = data_manager_instance.get_document_networkx_graph()
+#     if nx_graph:
+#         print(
+#             f"NetworkX Graph: {nx_graph.number_of_nodes()} nodes, {nx_graph.number_of_edges()} edges"
+#         )
 
-    pyg_data = data_manager_instance.get_pyg_data()
-    if pyg_data:
-        print(
-            f"PyG Data: Nodes={pyg_data.num_nodes}, Edges={pyg_data.num_edges}, Features={pyg_data.num_node_features}, Relations={pyg_data.num_relations if hasattr(pyg_data, 'num_relations') else 'N/A'}"
-        )
+#     pyg_data = data_manager_instance.get_pyg_data()
+#     if pyg_data:
+#         print(
+#             f"PyG Data: Nodes={pyg_data.num_nodes}, Edges={pyg_data.num_edges}, Features={pyg_data.num_node_features}, Relations={pyg_data.num_relations if hasattr(pyg_data, 'num_relations') else 'N/A'}"
+#         )
 
-    gnn_embeddings = data_manager_instance.get_gnn_embeddings()
-    if gnn_embeddings is not None:
-        print(f"GNN Embeddings shape: {gnn_embeddings.shape}")
-    else:
-        print("GNN Embeddings not available.")
+#     gnn_embeddings = data_manager_instance.get_gnn_embeddings()
+#     if gnn_embeddings is not None:
+#         print(f"GNN Embeddings shape: {gnn_embeddings.shape}")
+#     else:
+#         print("GNN Embeddings not available.")
 
-    graph_3d_data = data_manager_instance.get_graph_data()
-    if graph_3d_data and "error" not in graph_3d_data:
-        print(
-            f"3D Graph Visualization Data: {graph_3d_data['metadata']['total_nodes']} nodes, {graph_3d_data['metadata']['total_links']} links"
-        )
-    elif graph_3d_data:
-        print(f"3D Graph Data Error: {graph_3d_data.get('error')}")
+#     graph_3d_data = data_manager_instance.get_graph_data()
+#     if graph_3d_data and "error" not in graph_3d_data:
+#         print(
+#             f"3D Graph Visualization Data: {graph_3d_data['metadata']['total_nodes']} nodes, {graph_3d_data['metadata']['total_links']} links"
+#         )
+#     elif graph_3d_data:
+#         print(f"3D Graph Data Error: {graph_3d_data.get('error')}")

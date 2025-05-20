@@ -27,6 +27,8 @@ GNN_DROPOUT = 0.2
 GNN_TRAIN_EPOCHS = 100
 GNN_VERSION = "1.0.0"  # Increment when model architecture changes
 RETRAIN_GNN = False    # Set to True to force retraining
+GNN_MODEL_PATH = "models/gnn_model.pth"
+GNN_EMBEDDINGS_PATH = "models/gnn_embeddings.pth"
 
 # Data caching settings
 RETRAIN = True
