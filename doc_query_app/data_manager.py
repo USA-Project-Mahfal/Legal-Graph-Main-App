@@ -388,6 +388,7 @@ class DataManager:
             )
 
     def train_or_load_gnn(self, train_epochs: int = 50, force_train: bool = False):
+        return False
         if not self.gnn_manager_instance:
             print("GNNManager not initialized. Cannot train or load GNN model.")
             return False
