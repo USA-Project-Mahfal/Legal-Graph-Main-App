@@ -3,6 +3,17 @@ import { X } from 'lucide-react';
 export default function DocumentViewer({ document, onClose, isDarkMode }) {
   if (!document) return null;
 
+  // Helper function to check if a paragraph contains any of the highlighted texts
+  const containsHighlight = (paragraph) => {
+    if (!document.highlight_text_content) return false;
+    // If highlight_text_content is a string, convert it to array
+    const highlights = Array.isArray(document.highlight_text_content) 
+      ? document.highlight_text_content 
+      : [document.highlight_text_content];
+    
+    return highlights.some(text => paragraph.includes(text));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className={`w-11/12 h-5/6 rounded-lg shadow-xl flex flex-col ${
@@ -34,8 +45,8 @@ export default function DocumentViewer({ document, onClose, isDarkMode }) {
           }`}>
             <div className="whitespace-pre-wrap">
               {document.original_content.split('\n').map((paragraph, index) => {
-                // Check if this paragraph contains the highlighted text
-                const isHighlighted = paragraph.includes(document.highlight_text_content);
+                // Check if this paragraph contains any of the highlighted texts
+                const isHighlighted = containsHighlight(paragraph);
                 
                 return (
                   <p
