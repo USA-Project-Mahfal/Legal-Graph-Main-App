@@ -28,17 +28,6 @@ for idx, row in chunks_df.iterrows():
         "doc_id": row["doc_id"],
         "doc_name": row["doc_name"],
         "category": row["category"]
-        # "chunk_method": row["chunk_method"],
-        # "level": row["level"],
-        # "start_idx": row["start_idx"],
-        # "end_idx": row["end_idx"],
-        # "document_position": row["document_position"],
-        # "position_score": row["position_score"],
-        # "is_special_section": row["is_special_section"],
-        # "section_type": row["section_type"],
-        # "level_size": row["level_size"],
-        # "contained_chunks": row["contained_chunks"],
-        # "chunk_relationships": row["chunk_relationships"]
     }
     doc = Document(page_content=row["text"], metadata=metadata)
     documents.append(doc)
