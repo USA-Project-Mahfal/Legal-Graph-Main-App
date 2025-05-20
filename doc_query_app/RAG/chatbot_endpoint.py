@@ -19,15 +19,16 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    highlighted_document: dict
 
 @app.post("/chat")
 def chat_endpoint(request: ChatRequest):
     try:
         print(f"Received message: {request.message}")
         print(f"Received category: {request.category}")
-        response = chat_with_llm(request.message, request.category)
+        response, highlighted_document = chat_with_llm(request.message, request.category)
         print(response)
-        return ChatResponse(response=response)
+        return ChatResponse(response=response, highlighted_document=highlighted_document)
     except Exception as e:
         print(f"Error in chat_endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

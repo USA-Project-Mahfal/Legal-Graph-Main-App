@@ -3,6 +3,7 @@ from summarize import summarize_conversation
 from retrieve_context import retrieve_documents
 from chat_gemini import chat_gemini
 from gemini import initialize_gemini
+from highlight.main import get_document
 
 memory = ConversationBufferMemory(return_messages=True)
 
@@ -67,8 +68,13 @@ def chat_with_llm(user_message: str, category: str):
             {"input": f"{user_message}"}, 
             {"output": f"{conversation_summary}"}
         )
-        
-        return final_response
+
+        #get highlighted document
+        highlighted_document = get_document(docs)
+
+        return final_response, highlighted_document
         
     except Exception as e:
         raise Exception(f"Error in chat processing: {str(e)}")
+
+

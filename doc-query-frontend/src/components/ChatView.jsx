@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import MessageList from "./chat/MessageList";
 import ChatInput from "./chat/ChatInput";
+import DocumentViewer from "./DocumentViewer";
 
 export default function ChatView({ messages, setMessages, isDarkMode }) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [category, setCategory] = useState("skip");
+  const [selectedDocument, setSelectedDocument] = useState(null);
   const messagesEndRef = useRef(null);
 
   const categories = [
@@ -49,7 +51,8 @@ export default function ChatView({ messages, setMessages, isDarkMode }) {
       const systemResponse = {
         id: Date.now() + 1,
         role: "system",
-        content: data.response
+        content: data.response,
+        highlighted_document: data.highlighted_document
       };
       
       setMessages((prev) => [...prev, systemResponse]);
@@ -102,6 +105,7 @@ export default function ChatView({ messages, setMessages, isDarkMode }) {
         isLoading={isLoading}
         messagesEndRef={messagesEndRef}
         isDarkMode={isDarkMode}
+        onViewDocument={setSelectedDocument}
       />
 
       <ChatInput
@@ -111,6 +115,14 @@ export default function ChatView({ messages, setMessages, isDarkMode }) {
         handleKeyDown={handleKeyDown}
         isDarkMode={isDarkMode}
       />
+
+      {selectedDocument && (
+        <DocumentViewer
+          document={selectedDocument}
+          onClose={() => setSelectedDocument(null)}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </div>
   );
 }
