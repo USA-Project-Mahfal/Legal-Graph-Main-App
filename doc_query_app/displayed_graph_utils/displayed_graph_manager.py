@@ -43,9 +43,11 @@ class Graph_visualizer:
             if not doc_chunks.empty:
                 # Get the first chunk's text as description
                 # First 100 characters
+                name = doc_chunks.iloc[0]['doc_name'] or f"Doc {doc_id}"
                 description = doc_chunks.iloc[0]['text'][:MAX_CHAR_LIMIT]
                 category = doc_chunks.iloc[0].get('category', 'unknown')
                 doc_descriptions[doc_id] = {
+                    'name': name,
                     'description': description,
                     'category': category
                 }
@@ -57,7 +59,7 @@ class Graph_visualizer:
                 node_info = doc_descriptions[doc_id]
                 nodes.append({
                     "id": str(doc_id),
-                    "name": f"Doc {doc_id}",
+                    "name": node_info['name'],
                     "description": node_info['description'],
                     # Using category as group for coloring
                     "group": node_info['category'],
