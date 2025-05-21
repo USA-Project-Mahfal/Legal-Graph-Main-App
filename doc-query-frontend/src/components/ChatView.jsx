@@ -6,7 +6,7 @@ import DocumentViewer from "./DocumentViewer";
 export default function ChatView({ messages, setMessages, isDarkMode }) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [category, setCategory] = useState("skip");
+  const [category, setCategory] = useState("Default");
   const [selectedDocument, setSelectedDocument] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -16,7 +16,7 @@ export default function ChatView({ messages, setMessages, isDarkMode }) {
     'Service',
     'Sponsorship',
     'Strategic Alliance',
-    'skip'
+    'Default'
   ];
 
   // Handle message submission

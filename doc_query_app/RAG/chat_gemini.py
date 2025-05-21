@@ -23,6 +23,3 @@ def chat_gemini(user_query):
     
     response = model.generate_content(user_query)
     return response.text
-
-# respond = chat_palmyra('Hi') 
-# print(respond)
