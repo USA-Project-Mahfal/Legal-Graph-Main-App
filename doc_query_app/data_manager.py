@@ -29,7 +29,7 @@ from nodes.graph_builder import build_document_graph
 from nodes.pyg_converter import networkx_to_pyg_data
 
 from config import (
-    DATA_DIR,
+    BASE_DIR,
     USE_CACHED_DATA,
     USE_CACHED_3D_GRAPH,
     GNN_MODEL_PATH,
@@ -39,13 +39,10 @@ from config import (
 
 class DataManager:
     def __init__(self):
-        self.data_dir = DATA_DIR
         # Consider making this base_dir relative or from config for better portability
-        self.base_dir = (
-            "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
-        )
+        self.base_dir = BASE_DIR
         self.raw_files_dir = os.path.join(
-            self.base_dir, "raw_files/chunk_input")
+            self.base_dir, "chunk_input")
         self.hybrid_chunks_df_path = os.path.join(
             self.base_dir, "data/hybrid_chunks_df.pkl"
         )
@@ -56,16 +53,9 @@ class DataManager:
         self.embedding_model_name = "all-MiniLM-L6-v2"
 
         self.graph_data_path = os.path.join(
-            self.data_dir, "graph_data.json"
+            self.base_dir, "data/graph_data.json"
         )  # For 3D graph visualization
-        self.file_data_path = os.path.join(
-            self.data_dir, "file_data.json"
-        )  # Unused in current context, but kept
 
-        self.field_to_group = {
-            "file": 5,
-            "new": 6,
-        }  # Unused in current context, but kept
         self.last_doc_id: Optional[str] = "0"
 
         self.hybrid_chunks_df: Optional[pd.DataFrame] = None
@@ -83,12 +73,6 @@ class DataManager:
         self.final_gnn_embeddings: Optional[np.ndarray] = None
         self.gnn_model_path = GNN_MODEL_PATH
         self.gnn_embeddings_path = GNN_EMBEDDINGS_PATH
-
-        self.file_handlers = {
-            ".pdf": lambda f: PyPDF2.PdfReader(f).pages[0].extract_text(),
-            ".docx": lambda f: " ".join([p.text for p in docx.Document(f).paragraphs]),
-            "default": lambda f: f.read(),  # Fallback for .txt or other plain text
-        }
 
         # --- Initialization Sequence ---
         self.init_embeddings_and_pilot_model()
@@ -569,50 +553,4 @@ class DataManager:
         return None
 
 
-# Singleton instance
-# Ensure all dependencies (like config.py, nodes/*, GNN/*) are correctly set up
-# before instantiating.
-# Comment out if you instantiate it elsewhere (e.g., in app.py)
 data_manager = DataManager()
-
-# # Example of how to run if this script is executed directly (for testing)
-# if __name__ == "__main__":
-#     print("Initializing DataManager...")
-
-#     data_manager_instance = DataManager()
-#     print("\nDataManager Initialization Complete.")
-#     print(f"Last Doc ID: {data_manager_instance.get_last_doc_id()}")
-
-#     if data_manager_instance.hybrid_chunks_df is not None:
-#         print(
-#             f"Hybrid Chunks DF shape: {data_manager_instance.hybrid_chunks_df.shape}")
-#     if data_manager_instance.full_embeddings_matrix is not None:
-#         print(
-#             f"Full Embeddings Matrix shape: {data_manager_instance.full_embeddings_matrix.shape}"
-#         )
-
-#     nx_graph = data_manager_instance.get_document_networkx_graph()
-#     if nx_graph:
-#         print(
-#             f"NetworkX Graph: {nx_graph.number_of_nodes()} nodes, {nx_graph.number_of_edges()} edges"
-#         )
-
-#     pyg_data = data_manager_instance.get_pyg_data()
-#     if pyg_data:
-#         print(
-#             f"PyG Data: Nodes={pyg_data.num_nodes}, Edges={pyg_data.num_edges}, Features={pyg_data.num_node_features}, Relations={pyg_data.num_relations if hasattr(pyg_data, 'num_relations') else 'N/A'}"
-#         )
-
-#     gnn_embeddings = data_manager_instance.get_gnn_embeddings()
-#     if gnn_embeddings is not None:
-#         print(f"GNN Embeddings shape: {gnn_embeddings.shape}")
-#     else:
-#         print("GNN Embeddings not available.")
-
-#     graph_3d_data = data_manager_instance.get_graph_data()
-#     if graph_3d_data and "error" not in graph_3d_data:
-#         print(
-#             f"3D Graph Visualization Data: {graph_3d_data['metadata']['total_nodes']} nodes, {graph_3d_data['metadata']['total_links']} links"
-#         )
-#     elif graph_3d_data:
-#         print(f"3D Graph Data Error: {graph_3d_data.get('error')}")

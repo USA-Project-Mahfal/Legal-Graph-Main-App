@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any
 import os
 from nodes.load_n_preprocess import (
-    mock_detect_category,
+    detect_category,
     process_n_add_new_document,
     save_uploaded_file_temp,
     cleanup_temp_file,
@@ -62,7 +62,7 @@ async def upload_multiple_docs(files: List[UploadFile] = File(...)) -> Dict[str,
                 sample_content = f.read(10000)
 
             # Detect category from content
-            detected_category = mock_detect_category(sample_content)
+            detected_category = detect_category(sample_content)
             print(
                 f"Detected category for {file.filename}: {detected_category}")
 

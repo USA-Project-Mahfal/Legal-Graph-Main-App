@@ -4,12 +4,13 @@ import pandas as pd
 from tqdm import tqdm
 import random
 import PyPDF2
-import tempfile
 from pathlib import Path
+from config import (
+    BASE_DIR,
+)
 
-
-base_dir = "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
-new_raw_files_dir = os.path.join(base_dir, "raw_files/new_chunk_input")
+base_dir = BASE_DIR
+new_raw_files_dir = os.path.join(base_dir, "chunk_input")
 temp_upload_dir = os.path.join(base_dir, "raw_files/temp_uploads")
 categories = [
     # "License_Agreements",
@@ -219,7 +220,7 @@ def load_random_documents(base_dir: str, max_docs: int = None, seed: int = 42) -
     return docs_df
 
 
-def mock_detect_category(text):
+def detect_category(text):
     """Mock function to detect document category. Would be replaced with actual ML model."""
     # In reality this would use NLP/ML to analyze the text and determine category
     # For now just return a random category

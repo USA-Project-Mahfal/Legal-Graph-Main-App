@@ -8,8 +8,7 @@ APP_DESCRIPTION = "API for document querying and graph visualization"
 APP_VERSION = "1.0.0"
 
 # Data settings
-DATA_DIR = "data"
-RAW_FILES_DIR = "raw_files"
+BASE_DIR = "d:/PROJECTS/CLIENT/USA-Graph-ML/REPOS/Document_Fetch/doc_query_app"
 USE_CACHED_DATA = True
 USE_CACHED_3D_GRAPH = True
 MAX_CHAR_LIMIT = 200
@@ -29,9 +28,6 @@ GNN_VERSION = "1.0.0"  # Increment when model architecture changes
 RETRAIN_GNN = False    # Set to True to force retraining
 GNN_MODEL_PATH = "models/gnn_model.pth"
 GNN_EMBEDDINGS_PATH = "models/gnn_embeddings.pth"
-
-# Data caching settings
-RETRAIN = True
 
 FIELD_TO_GROUP = {"License_Agreements": 1, "Maintenance": 2,
                   "Service": 3, "Sponsorship": 4, "Strategic Alliance": 5}
