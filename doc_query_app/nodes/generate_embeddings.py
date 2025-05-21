@@ -1,14 +1,22 @@
 from sentence_transformers import SentenceTransformer
 import torch
+import os
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
+from nodes.saving_utils import save_embeddings_matrix
+from config import (
+    BASE_DIR,
+    EMBEDDING_MODEL_NAME
+)
+
+base_dir = BASE_DIR
 
 
 def generate_optimized_embeddings(source_chunks_df, model_name_to_use=None):
     if model_name_to_use is None:
         print("Model name not provided. Using default model: all-MiniLM-L6-v2")
-        model_name_to_use = "all-MiniLM-L6-v2"
+        model_name_to_use = EMBEDDING_MODEL_NAME
     print(f"Loading model: {model_name_to_use}")
     model = SentenceTransformer(model_name_to_use)
 
@@ -69,9 +77,9 @@ def update_embedding_matrix(self, new_doc_df: pd.DataFrame, current_embeddings) 
     """
     try:
         # Generate embeddings for new document chunks
-        new_embeddings, _ = generate_embeddings(
+        new_embeddings, _ = generate_optimized_embeddings(
             new_doc_df['text'].tolist(),
-            self.embedding_model
+            EMBEDDING_MODEL_NAME
         )
 
         # Convert to numpy array if not already
@@ -89,7 +97,9 @@ def update_embedding_matrix(self, new_doc_df: pd.DataFrame, current_embeddings) 
         # Save updated embeddings matrix
         save_embeddings_matrix(
             updated_embeddings,
-            self.full_embeddings_matrix_path
+            os.path.join(
+                base_dir, "data/full_embeddings_matrix.npy"
+            )
         )
 
         print(

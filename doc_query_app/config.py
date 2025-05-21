@@ -14,7 +14,7 @@ USE_CACHED_3D_GRAPH = True
 MAX_CHAR_LIMIT = 200
 
 # Embedding model settings
-MODEL_NAME = "all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
 SIMILARITY_THRESHOLD = 0.7
 
 # GNN settings

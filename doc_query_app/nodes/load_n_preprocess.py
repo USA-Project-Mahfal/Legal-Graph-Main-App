@@ -5,6 +5,7 @@ from tqdm import tqdm
 import random
 import PyPDF2
 from pathlib import Path
+import joblib
 from config import (
     BASE_DIR,
 )
@@ -13,10 +14,10 @@ base_dir = BASE_DIR
 new_raw_files_dir = os.path.join(base_dir, "chunk_input")
 temp_upload_dir = os.path.join(base_dir, "raw_files/temp_uploads")
 categories = [
-    # "License_Agreements",
-    # "Maintenance",
-    # "Service",
-    # "Sponsorship",
+    "License_Agreements",
+    "Maintenance",
+    "Service",
+    "Sponsorship",
     "Strategic Alliance"
 ]
 
@@ -221,10 +222,41 @@ def load_random_documents(base_dir: str, max_docs: int = None, seed: int = 42) -
 
 
 def detect_category(text):
-    """Mock function to detect document category. Would be replaced with actual ML model."""
-    # In reality this would use NLP/ML to analyze the text and determine category
-    # For now just return a random category
-    return random.choice(categories)
+    """Load trained model and use it to detect document category."""
+    # Load the model and vectorizer
+    model_path = os.path.join(base_dir, "models/category_classifier.joblib")
+    vectorizer_path = os.path.join(base_dir, "models/tfidf_vectorizer.joblib")
+
+    # Check if model files exist
+    if not os.path.exists(model_path) or not os.path.exists(vectorizer_path):
+        print("Warning: Classification model not found. Using random category.")
+        return "unknown"
+
+    try:
+        print(f"Loading classification model from: {model_path}")
+        # Load the model and vectorizer
+        model = joblib.load(model_path)
+        vectorizer = joblib.load(vectorizer_path)
+
+        # Use first 10000 chars for prediction (as done in training)
+        text_sample = text[:10000]
+
+        # Transform text using the vectorizer
+        text_vector = vectorizer.transform([text_sample])
+
+        # Predict category
+        predicted_category = model.predict(text_vector)[0]
+        print(f"Predicted category: {predicted_category}")
+
+        # If prediction is not in our categories list, default to random
+        if predicted_category not in categories:
+            return "unknown"
+
+        return predicted_category
+
+    except Exception as e:
+        print(f"Error using classification model: {e}")
+        return "unknown"
 
 
 def process_n_add_new_document(file_path, file_name, category=None, doc_id=None):
